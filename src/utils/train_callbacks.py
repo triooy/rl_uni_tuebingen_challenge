@@ -51,9 +51,11 @@ class SelfplayCallback(BaseCallback):
                 self.add_opponent_every_n_steps > 0
                 and self.n_calls % self.add_opponent_every_n_steps == 0
             ):
+                # First save the current model
                 path = f"{self.save_path}/model_{self.n_calls}.zip"
                 self.model.save(path)
                 vec_env = self.model.get_vec_normalize_env()
+                # if there is a normalization env, save that to
                 if vec_env:
                     vec_env.save(
                         os.path.join(self.save_path, f"model_{self.n_calls}.pkl")
@@ -65,18 +67,20 @@ class SelfplayCallback(BaseCallback):
                 self.change_every_n_steps > 0
                 and self.n_calls % self.change_every_n_steps == 0
             ):  
-                if self.how_many_to_add:
+                if self.how_many_to_add: # how many copies to add
                     new_opponents = []
                     for opponent in self.opponents:
                         new_opponents += [opponent for i in range(self.how_many_to_add)]
                     for i in range(self.n_envs - len(new_opponents)):
                         new_opponents.append(lh.BasicOpponent(weak=False))
-                else:
+                else: #otherwise choose random 
                     new_opponents = random.choices(
                         self.opponents,
                         k=self.n_envs,
                     )
+                # set the opponents in the envs
                 self.model.get_env().env_method("set_opponent", new_opponents)
+                # log some stats
                 count_basic_opponent = [
                     isinstance(opponent, lh.BasicOpponent) for opponent in new_opponents
                 ].count(True)
@@ -93,9 +97,7 @@ class SelfplayCallback(BaseCallback):
 
 class SaveEnv(BaseCallback):
     """
-    A custom callback that derives from ``BaseCallback``.
-
-    :param verbose: Verbosity level: 0 for no output, 1 for info messages, 2 for debug messages
+    Saves the environment if there is a new best model.
     """
 
     def __init__(self, verbose=0, path=None):
@@ -103,14 +105,6 @@ class SaveEnv(BaseCallback):
         self.path = path
 
     def _on_step(self) -> bool:
-        """
-        This method will be called by the model after each call to `env.step()`.
-
-        For child callback (of an `EventCallback`), this will be called
-        when the event is triggered.
-
-        :return: (bool) If the callback returns False, training is aborted early.
-        """
         env = self.model.get_vec_normalize_env()
         if env:
             env.save(self.path)
@@ -169,68 +163,11 @@ class TrialEvalCallback(EvalCallback):
     def _on_step(self) -> bool:
         continue_training = True
         if self.eval_freq > 0 and self.n_calls % self.eval_freq == 0:
-            continue_training = super()._on_step()
+            continue_training = super()._on_step() # run normal evaluation
 
             ### Selfplay
             if self.selfplay_callback:
-                if len(self.selfplay_callback.opponents[1:]) < 1:
-                    return continue_training
-                new_opponents = self.selfplay_callback.opponents[1:][-self.eval_env.num_envs:]
-                if len(new_opponents) < self.eval_env.num_envs:
-                    new_opponents += [self.selfplay_callback.opponents[-1] for i in range(self.eval_env.num_envs - len(new_opponents))]
-                self.eval_env.env_method("set_opponent", new_opponents)
-                print("starting selfplay evaluation")
-                episode_rewards, episode_lengths = evaluate_policy(
-                    self.model,
-                    self.eval_env,
-                    n_eval_episodes=self.n_eval_episodes,
-                    render=self.render,
-                    deterministic=self.deterministic,
-                    return_episode_rewards=True,
-                    warn=self.warn,
-                )
-                self.eval_env.env_method("set_opponent", lh.BasicOpponent())
-
-                mean_reward, std_reward = np.mean(episode_rewards), np.std(
-                    episode_rewards
-                )
-                mean_ep_length, std_ep_length = np.mean(episode_lengths), np.std(
-                    episode_lengths
-                )
-                # self.last_mean_reward = mean_reward
-                self.selfplay_last_mean_reward = mean_reward
-
-                if self.verbose >= 1:
-                    print(
-                        f"SELFPLAY: Eval num_timesteps={self.num_timesteps}, "
-                        f"episode_reward={mean_reward:.2f} +/- {std_reward:.2f}"
-                    )
-                    print(
-                        f"SELFPLAY: Episode length: {mean_ep_length:.2f} +/- {std_ep_length:.2f}"
-                    )
-                # Add to current Logger
-                self.logger.record("eval/selfplay_mean_reward", float(mean_reward))
-                self.logger.record("eval/selfplay_mean_ep_length", mean_ep_length)
-
-                if mean_reward > self.selfplay_best_mean_reward:
-                    if self.verbose >= 1:
-                        print("New best mean reward!")
-                    if self.best_model_save_path is not None:
-                        self.model.save(
-                            os.path.join(
-                                self.best_model_save_path, "selfplay_best_model"
-                            )
-                        )
-                    # self.best_mean_reward = mean_reward
-                    self.selfplay_best_mean_reward = mean_reward
-                    # Trigger callback on new best model, if needed
-                    if self.callback_on_new_best is not None:
-                        path = self.callback_on_new_best.path
-                        self.callback_on_new_best.path = path.replace(
-                            "best_model", "selfplay_best_model"
-                        )
-                        continue_training = self.callback_on_new_best.on_step()
-                        self.callback_on_new_best.path = path
+                self.selfplay_evaluation()
 
             self.eval_idx += 1
             self.trial.report(self.last_mean_reward, self.eval_idx)
@@ -271,3 +208,67 @@ class TrialEvalCallback(EvalCallback):
                 f"Stop training because reward {self.last_mean_reward} is below {self.reward_threshold_2} after {self.n_calls * self.n_procs} steps"
             )
         return continue_training
+
+    
+    def selfplay_evaluation(self, ):
+        if len(self.selfplay_callback.opponents[1:]) < 1: # if there are no copies of one self, skip
+            return True
+        new_opponents = self.selfplay_callback.opponents[1:][-self.eval_env.num_envs:] # take the last n selfs for evaluation
+        if len(new_opponents) < self.eval_env.num_envs:
+            new_opponents += [self.selfplay_callback.opponents[-1] for i in range(self.eval_env.num_envs - len(new_opponents))] # fill with the last copy
+        self.eval_env.env_method("set_opponent", new_opponents) # set opponents to envs
+        print("starting selfplay evaluation")
+        # run evaluation
+        episode_rewards, episode_lengths = evaluate_policy(
+            self.model,
+            self.eval_env,
+            n_eval_episodes=self.n_eval_episodes,
+            render=self.render,
+            deterministic=self.deterministic,
+            return_episode_rewards=True,
+            warn=self.warn,
+        )
+        # set basic opponents again to envs
+        self.eval_env.env_method("set_opponent", lh.BasicOpponent())
+
+        mean_reward, std_reward = np.mean(episode_rewards), np.std(
+            episode_rewards
+        )
+        mean_ep_length, std_ep_length = np.mean(episode_lengths), np.std(
+            episode_lengths
+        )
+        # self.last_mean_reward = mean_reward
+        self.selfplay_last_mean_reward = mean_reward
+
+        if self.verbose >= 1:
+            print(
+                f"SELFPLAY: Eval num_timesteps={self.num_timesteps}, "
+                f"episode_reward={mean_reward:.2f} +/- {std_reward:.2f}"
+            )
+            print(
+                f"SELFPLAY: Episode length: {mean_ep_length:.2f} +/- {std_ep_length:.2f}"
+            )
+        # Add to current Logger
+        self.logger.record("eval/selfplay_mean_reward", float(mean_reward))
+        self.logger.record("eval/selfplay_mean_ep_length", mean_ep_length)
+
+        if mean_reward > self.selfplay_best_mean_reward:
+            if self.verbose >= 1:
+                print("New best mean reward!")
+            if self.best_model_save_path is not None:
+                self.model.save(
+                    os.path.join(
+                        self.best_model_save_path, "selfplay_best_model"
+                    )
+                )
+            # self.best_mean_reward = mean_reward
+            self.selfplay_best_mean_reward = mean_reward
+            # Trigger callback on new best model, if needed
+            if self.callback_on_new_best is not None:
+                # save best selfplay model
+                path = self.callback_on_new_best.path
+                self.callback_on_new_best.path = path.replace(
+                    "best_model", "selfplay_best_model"
+                )
+                self.callback_on_new_best.on_step()
+                self.callback_on_new_best.path = path

@@ -41,7 +41,7 @@ class CustomWrapper(gym.Wrapper):
         self.opponents = {}
         self.weak = weak
         if discrete_action_space:
-            env.action_space = spaces.Discrete(7)
+            env.action_space = spaces.Discrete(7) # Check if this is still right
         else:
             env.action_space = spaces.Box(-1, +1, (4,), dtype=np.float32)
             self.continuous = True
