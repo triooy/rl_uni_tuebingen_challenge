@@ -135,6 +135,7 @@ class TrialEvalCallback(EvalCallback):
         steps_for_threshold_2=1000000,
         steps_for_threshold=1000000,
         selfplay_callback=None,
+        selfplay_evaluation=False,
     ):
         super().__init__(
             eval_env=eval_env,
@@ -159,14 +160,15 @@ class TrialEvalCallback(EvalCallback):
         self.selfplay_best_mean_reward = -np.inf
         self.selfplay_last_mean_reward = -np.inf
         self.selfplay_callback = selfplay_callback
-
+        self.selfplay_evaluation = selfplay_evaluation
+        
     def _on_step(self) -> bool:
         continue_training = True
         if self.eval_freq > 0 and self.n_calls % self.eval_freq == 0:
             continue_training = super()._on_step() # run normal evaluation
 
             ### Selfplay
-            if self.selfplay_callback:
+            if self.selfplay_callback and self.selfplay_evaluation:
                 self.selfplay_evaluation()
 
             self.eval_idx += 1
@@ -219,10 +221,10 @@ class TrialEvalCallback(EvalCallback):
         self.eval_env.env_method("set_opponent", new_opponents) # set opponents to envs
         print("starting selfplay evaluation")
         # run evaluation
-        episode_rewards, episode_lengths = evaluate_policy(
+        episode_rewards, episode_lengths = evaluate_policy(   ### takes so long
             self.model,
             self.eval_env,
-            n_eval_episodes=self.n_eval_episodes,
+            n_eval_episodes=int(self.n_eval_episodes / 2),  # eval half the episodes
             render=self.render,
             deterministic=self.deterministic,
             return_episode_rewards=True,

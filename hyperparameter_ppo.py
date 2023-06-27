@@ -50,9 +50,10 @@ CHANGE_OPPONENT_EVERY_N_STEPS = int(
     128000 / N_procs
 )  # after how many steps the opponent is changed in every environment
 FIRST_OPPONENT_AFTER_N_STEPS = int(
-    3_000_000 / N_procs
+    2_000_000 / N_procs
 )  # after how many steps the first copy of the agent is added as opponent
-HOW_MANY_TO_ADD = 2 # how many copies of the agent are added as opponent
+HOW_MANY_TO_ADD = 1 # how many copies of the agent are added as opponent
+SELFPLAY_EVALUATION = False # takes so much time, that it is not worth it
 
 def objective(trial: optuna.Trial) -> float:
     """
@@ -114,7 +115,7 @@ def objective(trial: optuna.Trial) -> float:
                 negativ_reward=True,
                 weak=False,
             )
-            for i in range(10)  # 16 evaluation environments
+            for i in range(10)  # 10 evaluation environments
             # random number
             # for selfplay it does matter, because for each env a random selfplay agent is added as opponent
             # larger the better
@@ -192,6 +193,7 @@ def objective(trial: optuna.Trial) -> float:
         reward_threshold_2=REWARD_THRESHOLD_2,
         steps_for_threshold_2=STEPS_FOR_TRESHOLD_2,
         steps_for_threshold=STEPS_FOR_TRESHOLD,
+        selfplay_evaluation=SELFPLAY_EVALUATION,
     )
 
     callbacks = [eval_callback]

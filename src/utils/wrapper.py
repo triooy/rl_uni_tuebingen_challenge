@@ -1,6 +1,7 @@
 import os
 import random
 from typing import Union
+import time
 
 import gym
 import laserhockey.hockey_env as lh
@@ -110,6 +111,7 @@ class CustomWrapper(gym.Wrapper):
     
     def load_opponent_from_disk(self, path):
         # laod opponent from disk
+        time.sleep(random.random()*2)
         opponent = ModelWrapper.load(path, device="cpu")
         print(f"Loaded opponent {opponent}")
         # check if normalize vec env is in dir
