@@ -14,10 +14,10 @@ DISCRETE_ACTION_SPACE = False
 NEGATIVE_REWARD = False
 N_procs = 128
 
-OPPNENT_ID = 77
+OPPNENT_ID = 47
 OPPONENT_DIR = f"/home/dh/logdir/selfplay2/trial_{OPPNENT_ID}/"
 OPPNENT_FILE = f"{OPPONENT_DIR}best_model"
-OPPNENT_NORMALIZE = False
+OPPNENT_NORMALIZE = True
 OPPONENT = True
 
 if __name__ == "__main__":
@@ -34,7 +34,9 @@ if __name__ == "__main__":
         ],
         start_method="fork",
     )
+    eval_env.render_mode = "human"
     obs = eval_env.reset()
+    
     model = ModelWrapper.load(OUT_FILE, print_system_info=True, device="cuda")
     if NORMALIZE:
         model.load_env(
@@ -42,10 +44,10 @@ if __name__ == "__main__":
             path=OUT_DIR + "best_model_env.pkl",
         )
 
-    # mean_reward, std_reward = evaluate_policy(
-    #     model, eval_env, n_eval_episodes=300, deterministic=True
-    # )
-    # print(f"mean_reward:{mean_reward:.2f} +/- {std_reward:.2f}")
+    mean_reward, std_reward = evaluate_policy(
+        model, eval_env, n_eval_episodes=300, deterministic=True
+    )
+    print(f"mean_reward:{mean_reward:.2f} +/- {std_reward:.2f}")
 
     if OPPONENT:
         eval_env.env_method("set_opponent", OPPNENT_FILE)

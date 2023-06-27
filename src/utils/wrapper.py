@@ -6,7 +6,7 @@ import time
 import gym
 import laserhockey.hockey_env as lh
 import numpy as np
-from gym import spaces
+from gymnasium import spaces
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
@@ -54,9 +54,9 @@ class CustomWrapper(gym.Wrapper):
         """
         Reset the environment
         """
-        obs = self.env.reset(**kwargs)
+        obs, info = self.env.reset()
 
-        return obs
+        return obs, info
 
     def step(self, action):
         """
@@ -77,7 +77,7 @@ class CustomWrapper(gym.Wrapper):
         if self.discrete_action_space:
             action = self.env.discrete_to_continous_action(action)
 
-        obs, r, d, info = self.env.step(np.hstack([action, a2]))
+        obs, r, d, t, info = self.env.step(np.hstack([action, a2]))
         info["TimeLimit.truncated"] = d
         info["terminal_observation"] = obs
         if not self.negativ_reward:
@@ -85,7 +85,7 @@ class CustomWrapper(gym.Wrapper):
         if d:
             d = True
             info["episode"] = {"r": r, "l": self.env.time, "t": d}
-        return obs, r, d, info
+        return obs, r, d, t, info
 
     def set_opponent(self, opponents: Union[list, str, lh.BasicOpponent]):
         if isinstance(opponents, type(lh.BasicOpponent())):
