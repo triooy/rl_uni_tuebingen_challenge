@@ -113,14 +113,17 @@ class CustomWrapper(gym.Wrapper):
     def load_opponent_from_disk(self, path, ):
         # laod opponent from disk
         time.sleep(random.random()*2)
-        try:
+        # read base dir 
+        files = os.listdir(os.path.dirname(path))
+        file = [file for file in files if file.endswith(".txt")][0]
+        if file == "PPO":
             opponent = ModelWrapperPPO.load(path, device="cpu")
-        except:
-            try: 
-                opponent = ModelWrapperTD3.load(path, device="cuda")
-            except:
-                print("Could not load opponent")
-                opponent = lh.BasicOpponent()
+        elif file == "TD3":
+            opponent = ModelWrapperTD3.load(path, device="cpu")
+        else:
+            print(e)
+            print("Could not load opponent")
+            opponent = lh.BasicOpponent()
         
         
         print(f"Loaded opponent {opponent}")

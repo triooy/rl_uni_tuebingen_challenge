@@ -54,6 +54,10 @@ class SelfplayCallback(BaseCallback):
                 # First save the current model
                 path = f"{self.save_path}/model_{self.n_calls}.zip"
                 self.model.save(path)
+                model_name = type(self.model).__name__
+                # create empty file with model name
+                with open(os.path.join(f"{self.save_path}", f"{model_name}.txt"), "w") as f:
+                    pass
                 vec_env = self.model.get_vec_normalize_env()
                 # if there is a normalization env, save that to
                 if vec_env:
@@ -113,6 +117,8 @@ class SaveEnv(BaseCallback):
 
     def _on_step(self) -> bool:
         env = self.model.get_vec_normalize_env()
+        with open(f"{self.path}/{type(self.model.__name__)}.txt", "w") as f:
+            pass
         if env:
             env.save(self.path)
             if self.verbose > 0:
@@ -265,6 +271,9 @@ class TrialEvalCallback(EvalCallback):
             if self.verbose >= 1:
                 print("New best mean reward!")
             if self.best_model_save_path is not None:
+                model_name = type(self.model).__name__
+                with open(os.path.join(f"{self.best_model_save_path}", f"{model_name}.txt"), "w") as f:
+                    pass
                 self.model.save(
                     os.path.join(
                         self.best_model_save_path, "selfplay_best_model"

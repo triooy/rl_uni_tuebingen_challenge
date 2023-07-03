@@ -80,9 +80,6 @@ def objective(trial: optuna.Trial) -> float:
     # check if file exists
     if os.path.isfile(FILENAME):
         data = pd.read_csv(FILENAME, index_col=0, header=0)
-        similar, reward = compare_params(params, data)
-        if similar:
-            return reward
 
     # get environment parameters
     normalize = params.pop("normalize")
