@@ -11,6 +11,7 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3.ppo import PPO
+from stable_baselines3.td3 import TD3
 
 
 class CustomWrapper(gym.Wrapper):
@@ -109,10 +110,19 @@ class CustomWrapper(gym.Wrapper):
                     self.opponents[self.opponent] = opponent
                     self.opponent = opponent
     
-    def load_opponent_from_disk(self, path):
+    def load_opponent_from_disk(self, path, ):
         # laod opponent from disk
         time.sleep(random.random()*2)
-        opponent = ModelWrapper.load(path, device="cpu")
+        try:
+            opponent = ModelWrapperPPO.load(path, device="cpu")
+        except:
+            try: 
+                opponent = ModelWrapperTD3.load(path, device="cuda")
+            except:
+                print("Could not load opponent")
+                opponent = lh.BasicOpponent()
+        
+        
         print(f"Loaded opponent {opponent}")
         # check if normalize vec env is in dir
         dir = os.path.dirname(path)
@@ -174,8 +184,41 @@ def make_env(
     set_random_seed(seed)
     return _init
 
+class ModelWrapperTD3(TD3):
+    def __init__(self, *args, **kwargs):
+        super().__init__(
+            *args,
+            **kwargs,
+        )
+        self.env = None
 
-class ModelWrapper(PPO):
+    def load_env(self, normalize, path):
+        train_env = DummyVecEnv(
+            [
+                make_env(
+                    i, mode=None, discrete_action_space=False, negativ_reward=False
+                )
+                for i in range(1)
+            ],
+        )
+        if normalize:
+            train_env = VecNormalize(
+                train_env,
+                norm_obs=True,
+                norm_reward=True,
+            )
+        self.env = VecNormalize.load(venv=train_env, load_path=path)
+        self.env.training = False
+
+    def predict(self, obs, state=None, episode_start=None, deterministic=False):
+        if self.env is not None:
+            obs = self.env.normalize_obs(obs)
+        return super().predict(
+            obs, state=state, episode_start=episode_start, deterministic=deterministic
+        )
+
+
+class ModelWrapperPPO(PPO):
     def __init__(self, *args, **kwargs):
         super().__init__(
             *args,

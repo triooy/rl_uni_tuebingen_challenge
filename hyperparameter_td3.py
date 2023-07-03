@@ -40,7 +40,7 @@ N_EVAL_EPISODES = 500  # number of episodes for evaluation
 STEPS_FOR_TRESHOLD = int(
     2_000_100 / N_procs
 )  # if mean reward is below threshold for this number of steps, training is stopped
-REWARD_THRESHOLD = -5  # threshold for mean reward
+REWARD_THRESHOLD = -4  # threshold for mean reward
 STEPS_FOR_TRESHOLD_2 = int(5_000_100 / N_procs)  # second abort criterion
 REWARD_THRESHOLD_2 = 0
 
