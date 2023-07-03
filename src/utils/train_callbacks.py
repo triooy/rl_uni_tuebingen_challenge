@@ -119,7 +119,9 @@ class SaveEnv(BaseCallback):
 
     def _on_step(self) -> bool:
         env = self.model.get_vec_normalize_env()
-        with open(f"{self.path}/{type(self.model).__name__}.txt", "w") as f:
+        # get base dir of save path
+        base_dir = os.path.dirname(self.path)
+        with open(f"{base_dir}/{type(self.model).__name__}.txt", "w") as f:
             pass
         if env:
             env.save(self.path)
