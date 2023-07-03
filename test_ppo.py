@@ -4,10 +4,10 @@ from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from torch import nn as nn
 
-from src.utils.wrapper import CustomWrapper, ModelWrapper, make_env
+from src.utils.wrapper import CustomWrapper, ModelWrapperPPO, make_env
 
 ID = 11
-OUT_DIR = f"serverlogs/selfplay3/trial_{ID}/"    #f"./selfplay/trial_{ID}/"
+OUT_DIR = f"best_agents/trial_{ID}/"    #f"./selfplay/trial_{ID}/"
 OUT_FILE = f"{OUT_DIR}best_model"
 NORMALIZE = True
 DISCRETE_ACTION_SPACE = False
@@ -15,7 +15,7 @@ NEGATIVE_REWARD = True
 N_procs = 128
 
 OPPNENT_ID = 12
-OPPONENT_DIR = f"serverlogs/selfplay3/trial_{OPPNENT_ID}/"
+OPPONENT_DIR = f"best_agents/trial_{OPPNENT_ID}/"
 OPPNENT_FILE = f"{OPPONENT_DIR}best_model"
 OPPNENT_NORMALIZE = True
 OPPONENT = True
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     eval_env.render_mode = "human"
     obs = eval_env.reset()
     
-    model = ModelWrapper.load(OUT_FILE, print_system_info=True, device="cuda")
+    model = ModelWrapperPPO.load(OUT_FILE, print_system_info=True, device="cuda")
     if NORMALIZE:
         model.load_env(
             NORMALIZE,
