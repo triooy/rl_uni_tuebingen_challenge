@@ -24,9 +24,9 @@ class SelfplayCallback(BaseCallback):
         save_path="./",
         n_envs=128,
         first_opponent_after_n_steps=0,
-        how_many_to_add=None, # how many copies of a particular opponent to add to the list e.g.: 128 env add 2 copies of every past model
-                            # one model every 1 million steps, training for 20 million steps = 40 models 
-                            # None = random 
+        how_many_to_add=None,  # how many copies of a particular opponent to add to the list e.g.: 128 env add 2 copies of every past model
+        # one model every 1 million steps, training for 20 million steps = 40 models
+        # None = random
     ):
         super(SelfplayCallback, self).__init__(verbose)
         self.change_every_n_steps = change_every_n_steps
@@ -56,7 +56,9 @@ class SelfplayCallback(BaseCallback):
                 self.model.save(path)
                 model_name = type(self.model).__name__
                 # create empty file with model name
-                with open(os.path.join(f"{self.save_path}", f"{model_name}.txt"), "w") as f:
+                with open(
+                    os.path.join(f"{self.save_path}", f"{model_name}.txt"), "w"
+                ) as f:
                     pass
                 vec_env = self.model.get_vec_normalize_env()
                 # if there is a normalization env, save that to
@@ -70,14 +72,14 @@ class SelfplayCallback(BaseCallback):
             if (
                 self.change_every_n_steps > 0
                 and self.n_calls % self.change_every_n_steps == 0
-            ):  
-                if self.how_many_to_add: # how many copies to add
+            ):
+                if self.how_many_to_add:  # how many copies to add
                     new_opponents = []
                     for opponent in self.opponents:
                         new_opponents += [opponent for i in range(self.how_many_to_add)]
                     for i in range(self.n_envs - len(new_opponents)):
                         new_opponents.append(lh.BasicOpponent(weak=False))
-                else: #otherwise choose random 
+                else:  # otherwise choose random
                     new_opponents = random.choices(
                         self.opponents,
                         k=self.n_envs,
@@ -97,7 +99,7 @@ class SelfplayCallback(BaseCallback):
                         f"Number of basic opponents: {count_basic_opponent}, number of opponents: {len(self.opponents)}"
                     )
         return True
-    
+
     def add_opponents(self, opponent):
         if isinstance(opponent, str):
             self.opponents.append(opponent)
@@ -117,7 +119,7 @@ class SaveEnv(BaseCallback):
 
     def _on_step(self) -> bool:
         env = self.model.get_vec_normalize_env()
-        with open(f"{self.path}/{type(self.model.__name__)}.txt", "w") as f:
+        with open(f"{self.path}/{type(self.model).__name__}.txt", "w") as f:
             pass
         if env:
             env.save(self.path)
@@ -174,11 +176,11 @@ class TrialEvalCallback(EvalCallback):
         self.selfplay_last_mean_reward = -np.inf
         self.selfplay_callback = selfplay_callback
         self.selfplay_evaluation = selfplay_evaluation
-        
+
     def _on_step(self) -> bool:
         continue_training = True
         if self.eval_freq > 0 and self.n_calls % self.eval_freq == 0:
-            continue_training = super()._on_step() # run normal evaluation
+            continue_training = super()._on_step()  # run normal evaluation
 
             ### Selfplay
             if self.selfplay_callback and self.selfplay_evaluation:
@@ -224,17 +226,25 @@ class TrialEvalCallback(EvalCallback):
             )
         return continue_training
 
-    
-    def selfplay_evaluation(self, ):
-        if len(self.selfplay_callback.opponents[1:]) < 1: # if there are no copies of one self, skip
+    def selfplay_evaluation(
+        self,
+    ):
+        if (
+            len(self.selfplay_callback.opponents[1:]) < 1
+        ):  # if there are no copies of one self, skip
             return True
-        new_opponents = self.selfplay_callback.opponents[1:][-self.eval_env.num_envs:] # take the last n selfs for evaluation
+        new_opponents = self.selfplay_callback.opponents[1:][
+            -self.eval_env.num_envs :
+        ]  # take the last n selfs for evaluation
         if len(new_opponents) < self.eval_env.num_envs:
-            new_opponents += [self.selfplay_callback.opponents[-1] for i in range(self.eval_env.num_envs - len(new_opponents))] # fill with the last copy
-        self.eval_env.env_method("set_opponent", new_opponents) # set opponents to envs
+            new_opponents += [
+                self.selfplay_callback.opponents[-1]
+                for i in range(self.eval_env.num_envs - len(new_opponents))
+            ]  # fill with the last copy
+        self.eval_env.env_method("set_opponent", new_opponents)  # set opponents to envs
         print("starting selfplay evaluation")
         # run evaluation
-        episode_rewards, episode_lengths = evaluate_policy(   ### takes so long
+        episode_rewards, episode_lengths = evaluate_policy(  ### takes so long
             self.model,
             self.eval_env,
             n_eval_episodes=int(self.n_eval_episodes / 2),  # eval half the episodes
@@ -246,9 +256,7 @@ class TrialEvalCallback(EvalCallback):
         # set basic opponents again to envs
         self.eval_env.env_method("set_opponent", lh.BasicOpponent())
 
-        mean_reward, std_reward = np.mean(episode_rewards), np.std(
-            episode_rewards
-        )
+        mean_reward, std_reward = np.mean(episode_rewards), np.std(episode_rewards)
         mean_ep_length, std_ep_length = np.mean(episode_lengths), np.std(
             episode_lengths
         )
@@ -272,12 +280,13 @@ class TrialEvalCallback(EvalCallback):
                 print("New best mean reward!")
             if self.best_model_save_path is not None:
                 model_name = type(self.model).__name__
-                with open(os.path.join(f"{self.best_model_save_path}", f"{model_name}.txt"), "w") as f:
+                with open(
+                    os.path.join(f"{self.best_model_save_path}", f"{model_name}.txt"),
+                    "w",
+                ) as f:
                     pass
                 self.model.save(
-                    os.path.join(
-                        self.best_model_save_path, "selfplay_best_model"
-                    )
+                    os.path.join(self.best_model_save_path, "selfplay_best_model")
                 )
             # self.best_mean_reward = mean_reward
             self.selfplay_best_mean_reward = mean_reward
