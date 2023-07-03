@@ -93,6 +93,13 @@ class SelfplayCallback(BaseCallback):
                         f"Number of basic opponents: {count_basic_opponent}, number of opponents: {len(self.opponents)}"
                     )
         return True
+    
+    def add_opponents(self, opponent):
+        if isinstance(opponent, str):
+            self.opponents.append(opponent)
+        elif isinstance(opponent, list):
+            self.opponents += opponent
+        print(f"Added opponent {opponent} to list of opponents")
 
 
 class SaveEnv(BaseCallback):

@@ -24,7 +24,7 @@ from src.utils.wrapper import CustomWrapper, make_env
 N_procs = 128  # parallel processes (environments)
 FILENAME = "/home/dh/logdir/hypersearch_ppo_selfplay3.csv"
 
-STUDY_NAME = "ppo16"  # study for hocky env good run "ppo12"  # optuna study name
+STUDY_NAME = "ppo18"  # study for hocky env good run "ppo12"  # optuna study name
 TENSORBOARD_LOG_DIR = "/home/dh/logdir/selfplay3/"
 STORAGE = "sqlite:////home/dh/ppo/ppo.db"  # optuna storage
 N_TRIALS = 200  # number of trials for optuna study
@@ -36,11 +36,11 @@ EVAL_FREQ = int(
 )  # evaluation frequency in time steps
 N_EVAL_EPISODES = 500  # number of episodes for evaluation
 STEPS_FOR_TRESHOLD = int(
-    8_000_100 / N_procs
+    10_000_100 / N_procs
 )  # if mean reward is below threshold for this number of steps, training is stopped
 REWARD_THRESHOLD = 2  # threshold for mean reward
-STEPS_FOR_TRESHOLD_2 = int(4_000_100 / N_procs)  # second abort criterion
-REWARD_THRESHOLD_2 = 0
+STEPS_FOR_TRESHOLD_2 = int(5_000_100 / N_procs)  # second abort criterion
+REWARD_THRESHOLD_2 = -2
 
 
 ## Selfplay parameters
@@ -54,6 +54,9 @@ FIRST_OPPONENT_AFTER_N_STEPS = int(
 )  # after how many steps the first copy of the agent is added as opponent
 HOW_MANY_TO_ADD = 1 # how many copies of the agent are added as opponent
 SELFPLAY_EVALUATION = False # takes so much time, that it is not worth it
+USE_BEST_AGENTS = True
+BEST_AGENTS = "./best_agents/"
+
 
 def objective(trial: optuna.Trial) -> float:
     """
@@ -210,7 +213,11 @@ def objective(trial: optuna.Trial) -> float:
             first_opponent_after_n_steps=FIRST_OPPONENT_AFTER_N_STEPS,
             how_many_to_add=HOW_MANY_TO_ADD,
         )
-
+        if USE_BEST_AGENTS:
+            best_agents = os.listdir(BEST_AGENTS)
+            # only keep dirs
+            best_agents = [os.path.join(BEST_AGENTS, agent, "best_model.zip") for agent in best_agents if os.path.isdir(os.path.join(BEST_AGENTS, agent))]
+            selfplay_callback.add_opponents(best_agents)
         eval_callback.selfplay_callback = selfplay_callback  # add selfplay callback to evaluation callback to evaluate against the selfplay agent
         callbacks += [selfplay_callback]  # add selfplay callback to training callbacks
 
@@ -326,23 +333,23 @@ if __name__ == "__main__":
         storage=STORAGE, 
         load_if_exists=True,
     )
-    study.enqueue_trial(    
-        {
-        "n_steps": 128,
-        "batch_size": 2048,
-        "gamma": 0.995,
-        "learning_rate": 0.00085,
-        "lr_schedule": 'constant',
-        "ent_coef": 0.00015525584920320315,
-        "clip_range": 0.3,
-        "n_epochs": 5,
-        "gae_lambda": 0.92,
-        "max_grad_norm": 0.3,
-        "vf_coef": 0.2422495988381274,
-        "normalize": False,
-        "negative_reward": True,
-        "discrete_action_space": False,
-    })
+    # study.enqueue_trial(    
+    #     {
+    #     "n_steps": 128,
+    #     "batch_size": 2048,
+    #     "gamma": 0.995,
+    #     "learning_rate": 0.00085,
+    #     "lr_schedule": 'constant',
+    #     "ent_coef": 0.00015525584920320315,
+    #     "clip_range": 0.3,
+    #     "n_epochs": 5,
+    #     "gae_lambda": 0.92,
+    #     "max_grad_norm": 0.3,
+    #     "vf_coef": 0.2422495988381274,
+    #     "normalize": False,
+    #     "negative_reward": True,
+    #     "discrete_action_space": False,
+    # })
     
     
     

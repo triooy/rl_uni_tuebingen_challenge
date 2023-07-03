@@ -6,16 +6,16 @@ from torch import nn as nn
 
 from src.utils.wrapper import CustomWrapper, ModelWrapper, make_env
 
-ID = 47
-OUT_DIR = f"/home/dh/logdir/selfplay2/trial_{ID}/"    #f"./selfplay/trial_{ID}/"
+ID = 11
+OUT_DIR = f"serverlogs/selfplay3/trial_{ID}/"    #f"./selfplay/trial_{ID}/"
 OUT_FILE = f"{OUT_DIR}best_model"
 NORMALIZE = True
 DISCRETE_ACTION_SPACE = False
-NEGATIVE_REWARD = False
+NEGATIVE_REWARD = True
 N_procs = 128
 
-OPPNENT_ID = 47
-OPPONENT_DIR = f"/home/dh/logdir/selfplay2/trial_{OPPNENT_ID}/"
+OPPNENT_ID = 12
+OPPONENT_DIR = f"serverlogs/selfplay3/trial_{OPPNENT_ID}/"
 OPPNENT_FILE = f"{OPPONENT_DIR}best_model"
 OPPNENT_NORMALIZE = True
 OPPONENT = True
@@ -43,14 +43,14 @@ if __name__ == "__main__":
             NORMALIZE,
             path=OUT_DIR + "best_model_env.pkl",
         )
-
+    if OPPONENT:
+        eval_env.env_method("set_opponent", OPPNENT_FILE)
     mean_reward, std_reward = evaluate_policy(
         model, eval_env, n_eval_episodes=300, deterministic=True
     )
     print(f"mean_reward:{mean_reward:.2f} +/- {std_reward:.2f}")
 
-    if OPPONENT:
-        eval_env.env_method("set_opponent", OPPNENT_FILE)
+    
     for i in range(1000):
         for _ in range(10000):
             eval_env.render()
