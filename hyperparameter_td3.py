@@ -264,7 +264,6 @@ def objective(trial: optuna.Trial) -> float:
         # create dataframe with hyperparameters and results
         params.pop("policy")
         params.pop("env")
-        params["lr_schedule"] = lr_schedule
         params["learning_rate"] = lr_rate
         params["trial_number"] = trial.number
         params["device"] = torch.cuda.get_device_name(0)
