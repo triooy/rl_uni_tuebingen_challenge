@@ -5,6 +5,7 @@ import optuna
 from rl_zoo3 import linear_schedule
 from stable_baselines3.common.noise import (NormalActionNoise,
                                             OrnsteinUhlenbeckActionNoise)
+from stable_baselines3 import HerReplayBuffer
 from torch import nn as nn
 
 
@@ -82,6 +83,94 @@ def sample_new_ppo_params2(trial: optuna.Trial) -> Dict[str, Any]:
         "negative_reward": negative_reward,
         "discrete_action_space": discrete_action_space,
     }
+
+def sample_her_params(trial: optuna.Trial, hyperparams: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Sampler for HerReplayBuffer hyperparams.
+
+    :param trial:
+    :parma hyperparams:
+    :return:
+    """
+    her_kwargs = {}
+    her_kwargs["n_sampled_goal"] = trial.suggest_int("n_sampled_goal", 1, 5)
+    her_kwargs["goal_selection_strategy"] = trial.suggest_categorical(
+        "goal_selection_strategy", ["final", "episode", "future"]
+    )
+    hyperparams["replay_buffer_kwargs"] = her_kwargs
+    return hyperparams
+
+def sample_td3_params(trial: optuna.Trial) -> Dict[str, Any]:
+    """
+    Sampler for TD3 hyperparams.
+
+    :param trial:
+    :return:
+    """
+    gamma = trial.suggest_categorical("gamma", [0.9, 0.95, 0.98, 0.99, 0.995, 0.999, 0.9999])
+    learning_rate = trial.suggest_float("learning_rate", 1e-5, 1, log=True)
+    batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 100, 128, 256, 512, 1024, 2048])
+    buffer_size = trial.suggest_categorical("buffer_size", [int(1e4), int(1e5), int(1e6)])
+    # Polyak coeff
+    tau = trial.suggest_categorical("tau", [0.001, 0.005, 0.01, 0.02, 0.05, 0.08])
+
+    train_freq = trial.suggest_categorical("train_freq", [1, 4, 8, 16, 32, 64, 128, 256, 512])
+    gradient_steps = train_freq
+
+    noise_type = trial.suggest_categorical("noise_type", ["ornstein-uhlenbeck", "normal", None])
+    noise_std = trial.suggest_uniform("noise_std", 0, 1)
+    her = False # trial.suggest_categorical("her", [True, False])
+    normalize = trial.suggest_categorical("normalize", [True, False])
+    negative_reward = trial.suggest_categorical("negative_reward", [True, False])
+    discrete_action_space = (
+        False  # trial.suggest_categorical("discrete_action_space", [True, False])
+    )
+    
+    # NOTE: Add "verybig" to net_arch when tuning HER
+    net_arch = trial.suggest_categorical("net_arch", [
+        #"small",
+        "medium",
+        "big"
+        ])
+    # activation_fn = trial.suggest_categorical('activation_fn', [nn.Tanh, nn.ReLU, nn.ELU, nn.LeakyReLU])
+    # ortho_init = trial.suggest_categorical("ortho_init", [False, True])
+    net_arch = {
+        "small": [64, 64],
+        "medium": [256, 256],
+        "big": [400, 300],
+        # Uncomment for tuning HER
+        # "verybig": [256, 256, 256],
+    }[net_arch]
+
+    hyperparams = {
+        "gamma": gamma,
+        "learning_rate": learning_rate,
+        "batch_size": batch_size,
+        "buffer_size": buffer_size,
+        "train_freq": train_freq,
+        "gradient_steps": gradient_steps,
+        "policy_kwargs": dict(net_arch=net_arch),
+        "tau": tau,
+    }
+
+    if noise_type == "normal":
+        hyperparams["action_noise"] = NormalActionNoise(
+            mean=np.zeros(4), sigma=noise_std * np.ones(4)
+        )
+    elif noise_type == "ornstein-uhlenbeck":
+        hyperparams["action_noise"] = OrnsteinUhlenbeckActionNoise(
+            mean=np.zeros(4), sigma=noise_std * np.ones(4)
+        )
+
+    if  her:
+        hyperparams['replay_buffer_class'] = HerReplayBuffer
+        hyperparams = sample_her_params(trial, hyperparams)
+
+    hyperparams["normalize"] = normalize
+    hyperparams["negative_reward"] = negative_reward
+    hyperparams["discrete_action_space"] = discrete_action_space
+    
+    return hyperparams
 
 
 def sample_new_ppo_params(trial: optuna.Trial) -> Dict[str, Any]:
