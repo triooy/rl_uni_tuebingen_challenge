@@ -116,12 +116,11 @@ class CustomWrapper(gym.Wrapper):
         # read base dir 
         files = os.listdir(os.path.dirname(path))
         file = [file for file in files if file.endswith(".txt")][0]
-        if file == "PPO":
+        if file in ["PPO", "PPO.txt"]:
             opponent = ModelWrapperPPO.load(path, device="cpu")
-        elif file == "TD3":
+        elif file in ["TD3", "TD3.txt"]:
             opponent = ModelWrapperTD3.load(path, device="cpu")
         else:
-            print(e)
             print("Could not load opponent")
             opponent = lh.BasicOpponent()
         
