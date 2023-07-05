@@ -50,6 +50,8 @@ class Trainer:
         trial: optuna.Trial = None,
         csv_filename: str = None,
         verbose: int = 1,
+        add_to_best_agents_when_mean_reward_is_above=None,
+        add_to_best_agents_when_best_agents_mean_reward_is_above=None,
         **kwargs,
     ) -> None:
         self.negative_reward = negative_reward
@@ -111,6 +113,7 @@ class Trainer:
             "TD3_MlpPolicy": TD3_MlpPolicy,
         }
         self.agent = agent
+        self.model_type = agent
         self.policy = policy
         self.agents_kwargs = agents_kwargs
         self.setup_agent()
@@ -130,6 +133,12 @@ class Trainer:
         self.best_agent_mean_reward = -np.inf
         self.best_agent_std_reward = 0
         self.train_time = 0
+        self.add_to_best_agents_when_best_agents_mean_reward_is_above = (
+            add_to_best_agents_when_best_agents_mean_reward_is_above
+        )
+        self.add_to_best_agents_when_mean_reward_is_above = (
+            add_to_best_agents_when_mean_reward_is_above
+        )
 
     def setup_agent(self):
         """Setup agent"""
@@ -234,7 +243,13 @@ class Trainer:
             logger.info(f"best_agents_mean_reward:{self.best_agent_mean_reward:.2f} ")
 
         self.write_csv(os.path.join(self.save_path, self.csv_filename))
-        self.copy_trained_agnet_to_best_agents()
+        if (
+            self.add_to_best_agents_when_best_agents_mean_reward_is_above
+            and self.add_to_best_agents_when_best_agents_mean_reward_is_above
+            < self.best_agent_mean_reward
+            and self.add_to_best_agents_when_mean_reward_is_above < self.mean_reward
+        ):
+            self.copy_trained_agent_to_best_agents()
 
     def evaluate(self, n_eval_episodes: int = 500):
         """Evaluate the agent"""
@@ -362,7 +377,7 @@ class Trainer:
         else:
             df.to_csv(path, mode="a", header=True)
 
-    def copy_trained_agnet_to_best_agents(self):
+    def copy_trained_agent_to_best_agents(self):
         """Copy trained agent to best_agents folder"""
         # copy selfplay_best_model.zip, PPO.txt and selfplay_best_model_env.pkl to best_agents
         logger.info("Copying trained agent to best_agents folder...")
@@ -382,7 +397,8 @@ class Trainer:
             os.path.join(save_path, "best_model.zip"),
         )
         shutil.copy(
-            os.path.join(self.save_path, "PPO.txt"), os.path.join(save_path, "PPO.txt")
+            os.path.join(self.save_path, f"{self.model_type}.txt"),
+            os.path.join(save_path, f"{self.model_type}.txt"),
         )
         shutil.copy(
             os.path.join(self.save_path, self.csv_filename),
