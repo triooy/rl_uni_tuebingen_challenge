@@ -206,7 +206,7 @@ class ModelWrapperTD3(TD3):
         )
         self.env = None
 
-    def load_env(self, normalize, path):
+    def load_env(self, path):
         train_env = DummyVecEnv(
             [
                 make_env(
@@ -215,12 +215,11 @@ class ModelWrapperTD3(TD3):
                 for i in range(1)
             ],
         )
-        if normalize:
-            train_env = VecNormalize(
-                train_env,
-                norm_obs=True,
-                norm_reward=True,
-            )
+        train_env = VecNormalize(
+            train_env,
+            norm_obs=True,
+            norm_reward=True,
+        )
         self.env = VecNormalize.load(venv=train_env, load_path=path)
         self.env.training = False
 
