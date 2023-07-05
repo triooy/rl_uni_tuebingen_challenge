@@ -1,16 +1,16 @@
 logs:
-  csv_filename: "hyper_ppo.csv"
-  tensorboard_log_dir: "../hyper_ppo"
-  run_name: "hyper_ppo_1"
+  csv_filename: "trainer_test.csv"
+  tensorboard_log_dir: "../trainer_test"
+  run_name: "trainer_test"
 
 hyperparameter:
-  do_hyperparameter_search: true
-  study_name: "ppo"
-  storage: "sqlite:////home/dh/logdir/ppo.db"
+  do_hyperparameter_search: false
+  study_name: "td3"
+  storage: "sqlite:///td3.db"
   n_trials: 200 
   n_jobs: 1
   n_startup_trials: 5
-  csv_filename: "hyperparameter_search_ppo.csv"
+  csv_filename: "hyperparameter_search.csv"
 
 training:
   n_train_envs: 128
@@ -24,31 +24,28 @@ training:
   reward_threshold_2: 0 
 
 agent:
-  agent: "PPO"
-  policy: "PPO_MlpPolicy"
+  agent: "TD3"
+  policy: "TD3_MlpPolicy"
   normalize: true
   negative_reward: true
   discrete_action_space: false
 
 agent_parameter:  # ignored if hyperparameter search is enabled
-  n_steps: 512
+  buffer_size: 10000
   batch_size: 2048
-  gamma: 0.999
-  learning_rate: 0.00073
-  ent_coef: 0.0009673352
-  clip_range: 0.2
-  n_epochs: 5
-  gae_lambda: 0.95
-  max_grad_norm: 0.6
-  vf_coef: 0.6482388887006054
+  gamma: 0.98
+  learning_rate: 0.00328704929928516
   device: cuda
-  policy_kwargs: {net_arch: [256, 256], ortho_init: true, activation_fn: "relu"}
-  
+  train_freq: 1
+  gradient_steps: 1
+  policy_kwargs: {net_arch: [256, 256]}
+  tau: 0.05
+
 selfplay:
   selfplay: true
   add_opponent_every_n_steps: 1000000
   change_opponent_every_n_steps: 128000
-  first_opponent_after_n_steps: 2000000
+  first_opponent_after_n_steps: 1000000
   how_many_to_add: 1
   best_agents_path: ../best_agents
   add_to_best_agents_when_mean_reward_is_above: 9.6

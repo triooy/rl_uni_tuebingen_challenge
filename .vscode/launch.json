@@ -1,0 +1,86 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "train_ppo",
+            "type": "python",
+            "request": "launch",
+            "program": "main.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            // run from root directory
+            "cwd": "${workspaceFolder}/rl_uni_tuebingen_challenge",
+            "args": [
+                "--config",
+                "configs/train_ppo.yaml"
+            ]
+        },
+        {
+            "name": "hypersearch_ppo",
+            "type": "python",
+            "request": "launch",
+            "program": "main.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            // run from root directory
+            "cwd": "${workspaceFolder}/rl_uni_tuebingen_challenge",
+            "args": [
+                "--config",
+                "configs/hypersearch_ppo.yaml"
+            ]
+        },
+        {
+            "name": "train_td3",
+            "type": "python",
+            "request": "launch",
+            "program": "main.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            // run from root directory
+            "cwd": "${workspaceFolder}/rl_uni_tuebingen_challenge",
+            "args": [
+                "--config",
+                "configs/train_td3.yaml"
+            ]
+        },
+        {
+            "name": "hypersearch_td3",
+            "type": "python",
+            "request": "launch",
+            "program": "main.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            // run from root directory
+            "cwd": "${workspaceFolder}/rl_uni_tuebingen_challenge",
+            "args": [
+                "--config",
+                "configs/hypersearch_td3.yaml"
+            ]
+        },
+        {
+            "name": "test",
+            "type": "python",
+            "request": "launch",
+            "program": "main.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            // run from root directory
+            "cwd": "${workspaceFolder}/rl_uni_tuebingen_challenge",
+            "args": [
+                "--config",
+                "configs/test.yaml"
+            ]
+        },
+    ]
+}

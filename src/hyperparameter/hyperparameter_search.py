@@ -3,7 +3,7 @@ from optuna.samplers import TPESampler
 import optuna
 import os
 from src.training.train import train
-from src.hyperparameter.hyperparams import sample_new_ppo_params2
+from src.hyperparameter.hyperparams import sample_new_ppo_params2, sample_td3_params
 import logging
 
 logger = logging.getLogger(__name__)
@@ -18,6 +18,8 @@ def get_objective_fn(config):
     run_name = config["logs"]["run_name"]
     if config["agent"]["agent"] == "PPO":
         sample_fn = sample_new_ppo_params2
+    elif config["agent"]["agent"] == "TD3":
+        sample_fn = sample_td3_params
     else:
         raise NotImplementedError
 

@@ -42,7 +42,8 @@ agent_parameter:  # ignored if hyperparameter search is enabled
   max_grad_norm: 0.6
   vf_coef: 0.6482388887006054
   device: cuda
-
+  policy_kwargs: {net_arch: [256, 256], ortho_init: true, activation_fn: "relu"}
+  
 selfplay:
   selfplay: true
   add_opponent_every_n_steps: 1000000

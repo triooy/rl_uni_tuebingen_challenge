@@ -141,6 +141,17 @@ class Trainer:
             self.agents_kwargs["verbose"] = self.verbose
             self.agents_kwargs["tensorboard_log"] = self.tensorboard_log_dir
             self.agent = PPO(**self.agents_kwargs)
+            logger.info(f"PPO Agent parameters: {self.agents_kwargs}")
+            logger.info("PPO Agent setup complete...")
+        elif self.agent == "TD3":
+            self.policy = self.policies[self.policy]
+            self.agents_kwargs["policy"] = self.policy
+            self.agents_kwargs["env"] = self.train_env
+            self.agents_kwargs["verbose"] = self.verbose
+            self.agents_kwargs["tensorboard_log"] = self.tensorboard_log_dir
+            self.agent = TD3(**self.agents_kwargs)
+            logger.info(f"TD3 Agent parameters: {self.agents_kwargs}")
+            logger.info("TD3 Agent setup complete...")
 
     def setup_callbacks(self):
         """Setup callbacks for training"""

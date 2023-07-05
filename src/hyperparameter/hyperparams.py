@@ -86,6 +86,9 @@ def sample_new_ppo_params2(trial: optuna.Trial) -> Dict[str, Any]:
         "normalize": normalize,
         "negative_reward": negative_reward,
         "discrete_action_space": discrete_action_space,
+        "policy_kwargs": dict(
+            net_arch=[256, 256], ortho_init=True, activation_fn="relu"
+        ),
     }
 
 
