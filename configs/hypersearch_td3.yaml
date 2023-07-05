@@ -20,8 +20,8 @@ training:
   normalize: true
   steps_for_threshold: 5000100
   reward_threshold: 5
-  steps_for_threshold_2: 3000100
-  reward_threshold_2: 0 
+  steps_for_threshold_2: 1000100
+  reward_threshold_2: -10 
 
 agent:
   agent: "TD3"
