@@ -1,0 +1,10 @@
+test:
+  model_1_dir: "../best_agents/trial_0"
+  model_2_dir: "../best_agents/trial_8"
+  n_eval_episodes: 100
+  n_eval_envs: 1
+  model_vs_model: true
+  render_mode: human
+  device: cuda
+  discrete_action_space: false
+  weak_opponent: false

@@ -12,6 +12,9 @@ from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3.ppo import PPO
 from stable_baselines3.td3 import TD3
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class CustomWrapper(gym.Wrapper):
@@ -43,7 +46,7 @@ class CustomWrapper(gym.Wrapper):
         self.opponents = {}
         self.weak = weak
         if discrete_action_space:
-            env.action_space = spaces.Discrete(7) # Check if this is still right
+            env.action_space = spaces.Discrete(7)  # Check if this is still right
         else:
             env.action_space = spaces.Box(-1, +1, (4,), dtype=np.float32)
             self.continuous = True
@@ -95,37 +98,45 @@ class CustomWrapper(gym.Wrapper):
             return True
         elif isinstance(opponents, list):
             self.opponent = opponents[self.rank]
-        elif isinstance(opponents, str):   
+        elif isinstance(opponents, str):
             self.opponent = opponents
-            
+
         if self.mode == self.NORMAL:
             if isinstance(self.opponent, str):
-                print(f"Load opponent {self.opponent}")
+                logger.info(f"Load opponent {self.opponent}")
                 if self.opponent in self.opponents.keys():
                     self.opponent = self.opponents[self.opponent]
-                    print(f"Loaded opponent {self.opponent}")
-                    
+                    logger.info(f"Loaded opponent {self.opponent}")
+
                 else:
-                    opponent = self.load_opponent_from_disk(path=self.opponent)
+                    opponent = CustomWrapper.load_model_from_disk(path=self.opponent)
                     self.opponents[self.opponent] = opponent
                     self.opponent = opponent
-    
-    def load_opponent_from_disk(self, path, ):
+
+    @staticmethod
+    def load_model_from_disk(
+        path,
+    ):
         # laod opponent from disk
-        time.sleep(random.random()*2)
-        # read base dir 
-        files = os.listdir(os.path.dirname(path))
+        time.sleep(random.random() * 2)
+        # read base dir
+        # check if path is zip file or dir
+        if os.path.isdir(path):
+            files = os.listdir(path)
+            model = [file for file in files if file.endswith(".zip")][0]
+            path = os.path.join(path, model)
+        else:
+            files = os.listdir(os.path.dirname(path))
         file = [file for file in files if file.endswith(".txt")][0]
         if file in ["PPO", "PPO.txt"]:
             opponent = ModelWrapperPPO.load(path, device="cpu")
         elif file in ["TD3", "TD3.txt"]:
             opponent = ModelWrapperTD3.load(path, device="cpu")
         else:
-            print("Could not load opponent")
+            logger.info("Could not load opponent")
             opponent = lh.BasicOpponent()
-        
-        
-        print(f"Loaded opponent {opponent}")
+
+        logger.info(f"Loaded opponent {opponent}")
         # check if normalize vec env is in dir
         dir = os.path.dirname(path)
         op_name = os.path.basename(path).replace(".zip", "")
@@ -135,10 +146,10 @@ class CustomWrapper(gym.Wrapper):
 
         # check if normalize vec env is in dir
         if len(env) > 0:
-            print(f"Load opponent env {os.path.join(dir, env[0])}")
-            opponent.load_env(True, path=os.path.join(dir, env[0]))
-            print(f"Loaded opponent env {os.path.join(dir, env[0])}")
-            
+            logger.info(f"Load opponent env {os.path.join(dir, env[0])}")
+            opponent.load_env(path=os.path.join(dir, env[0]))
+            logger.info(f"Loaded opponent env {os.path.join(dir, env[0])}")
+
         return opponent
 
 
@@ -186,6 +197,7 @@ def make_env(
     set_random_seed(seed)
     return _init
 
+
 class ModelWrapperTD3(TD3):
     def __init__(self, *args, **kwargs):
         super().__init__(
@@ -228,7 +240,7 @@ class ModelWrapperPPO(PPO):
         )
         self.env = None
 
-    def load_env(self, normalize, path):
+    def load_env(self, path):
         train_env = DummyVecEnv(
             [
                 make_env(
@@ -237,12 +249,11 @@ class ModelWrapperPPO(PPO):
                 for i in range(1)
             ],
         )
-        if normalize:
-            train_env = VecNormalize(
-                train_env,
-                norm_obs=True,
-                norm_reward=True,
-            )
+        train_env = VecNormalize(
+            train_env,
+            norm_obs=True,
+            norm_reward=True,
+        )
         self.env = VecNormalize.load(venv=train_env, load_path=path)
         self.env.training = False
 
