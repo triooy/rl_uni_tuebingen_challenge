@@ -18,8 +18,8 @@ training:
   n_evaluations: 40
   n_timesteps: 40000000
   normalize: true
-  steps_for_threshold: 5000100
-  reward_threshold: 5
+  steps_for_threshold: 3000100
+  reward_threshold: 0
   steps_for_threshold_2: 1000100
   reward_threshold_2: -10 
 

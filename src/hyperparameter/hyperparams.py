@@ -113,7 +113,7 @@ def sample_td3_params(trial: optuna.Trial) -> Dict[str, Any]:
     tau = trial.suggest_categorical("tau", [0.001, 0.005, 0.01, 0.02, 0.05, 0.08])
 
     train_freq = trial.suggest_categorical(
-        "train_freq", [1, 4, 8, 16, 32, 64, 128, 256, 512]
+        "train_freq", [32, 64, 128, 256, 512, 1024, 2048, 4096]
     )
     gradient_steps = train_freq
 
