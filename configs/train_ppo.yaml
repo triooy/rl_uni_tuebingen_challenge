@@ -7,10 +7,11 @@ hyperparameter:
   do_hyperparameter_search: false
   study_name: "ppo"
   storage: "sqlite:///ppo.db"
-  n_trials: 200 
+  n_trials: 200
   n_jobs: 1
   n_startup_trials: 5
   csv_filename: "hyperparameter_search.csv"
+  start_method: "spawn"
 
 training:
   n_train_envs: 128
@@ -21,7 +22,7 @@ training:
   steps_for_threshold: 5000100
   reward_threshold: 5
   steps_for_threshold_2: 3000100
-  reward_threshold_2: 0 
+  reward_threshold_2: 0
 
 agent:
   agent: "PPO"
@@ -30,7 +31,7 @@ agent:
   negative_reward: true
   discrete_action_space: false
 
-agent_parameter:  # ignored if hyperparameter search is enabled
+agent_parameter: # ignored if hyperparameter search is enabled
   n_steps: 512
   batch_size: 2048
   gamma: 0.999
@@ -42,8 +43,9 @@ agent_parameter:  # ignored if hyperparameter search is enabled
   max_grad_norm: 0.6
   vf_coef: 0.6482388887006054
   device: cuda
-  policy_kwargs: {net_arch: [256, 256], ortho_init: true, activation_fn: "relu"}
-  
+  policy_kwargs:
+    { net_arch: [256, 256], ortho_init: true, activation_fn: "relu" }
+
 selfplay:
   selfplay: true
   add_opponent_every_n_steps: 1000000

@@ -7,10 +7,11 @@ hyperparameter:
   do_hyperparameter_search: false
   study_name: "td3"
   storage: "sqlite:///td3.db"
-  n_trials: 200 
+  n_trials: 200
   n_jobs: 1
   n_startup_trials: 5
   csv_filename: "hyperparameter_search.csv"
+  start_method: "spawn"
 
 training:
   n_train_envs: 128
@@ -21,7 +22,7 @@ training:
   steps_for_threshold: 5000100
   reward_threshold: 5
   steps_for_threshold_2: 3000100
-  reward_threshold_2: 0 
+  reward_threshold_2: 0
 
 agent:
   agent: "TD3"
@@ -30,7 +31,7 @@ agent:
   negative_reward: true
   discrete_action_space: false
 
-agent_parameter:  # ignored if hyperparameter search is enabled
+agent_parameter: # ignored if hyperparameter search is enabled
   buffer_size: 10000
   batch_size: 2048
   gamma: 0.98
@@ -38,7 +39,7 @@ agent_parameter:  # ignored if hyperparameter search is enabled
   device: cuda
   train_freq: 1
   gradient_steps: 1
-  policy_kwargs: {net_arch: [256, 256]}
+  policy_kwargs: { net_arch: [256, 256] }
   tau: 0.05
 
 selfplay:

@@ -1,0 +1,9 @@
+evaluation:
+  n_eval_episodes: 100
+  n_eval_envs: 1
+  render_mode: human
+  device: cpu
+  folder_to_agents: "../best_agents"
+  discrete_action_space: false
+  start_method: "spawn"
+  save_location: "../evaluations"

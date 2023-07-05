@@ -7,7 +7,7 @@ hyperparameter:
   do_hyperparameter_search: true
   study_name: "td3"
   storage: "sqlite:////home/dh/logdir/td3.db"
-  n_trials: 200 
+  n_trials: 200
   n_jobs: 1
   n_startup_trials: 5
   csv_filename: "hyperparameter_search_td3.csv"
@@ -30,7 +30,7 @@ agent:
   negative_reward: true
   discrete_action_space: false
 
-agent_parameter:  # ignored if hyperparameter search is enabled
+agent_parameter: # ignored if hyperparameter search is enabled
   buffer_size: 10000
   batch_size: 2048
   gamma: 0.98
@@ -38,7 +38,7 @@ agent_parameter:  # ignored if hyperparameter search is enabled
   device: cuda
   train_freq: 1
   gradient_steps: 1
-  policy_kwargs: {net_arch: [256, 256]}
+  policy_kwargs: { net_arch: [256, 256] }
   tau: 0.05
 
 selfplay:
