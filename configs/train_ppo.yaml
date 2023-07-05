@@ -42,7 +42,7 @@ agent_parameter: # ignored if hyperparameter search is enabled
   gae_lambda: 0.95
   max_grad_norm: 0.6
   vf_coef: 0.6482388887006054
-  device: cpu
+  device: cuda
   policy_kwargs:
     { net_arch: [256, 256], ortho_init: true, activation_fn: "relu" }
 
