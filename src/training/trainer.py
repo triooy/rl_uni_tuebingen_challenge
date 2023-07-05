@@ -52,6 +52,7 @@ class Trainer:
         verbose: int = 1,
         add_to_best_agents_when_mean_reward_is_above=None,
         add_to_best_agents_when_best_agents_mean_reward_is_above=None,
+        start_method: str = "fork",
         **kwargs,
     ) -> None:
         self.negative_reward = negative_reward
@@ -65,6 +66,7 @@ class Trainer:
         self.run_name = run_name
         self.save_path = os.path.join(tensorboard_log_dir, run_name)
         self.csv_filename = csv_filename
+        self.start_method = start_method
 
         # create environments
         self.create_environments()
@@ -318,7 +320,7 @@ class Trainer:
                     )
                     for i in range(len(best_agents))
                 ],
-                start_method="fork",
+                start_method=self.start_method,
             )
             # set opponents
             for i, agent in enumerate(self.best_agents):
@@ -338,7 +340,7 @@ class Trainer:
                 )
                 for i in range(self.n_train_envs)
             ],
-            start_method="fork",
+            start_method=self.start_method,
         )
 
         self.eval_env = SubprocVecEnv(
@@ -352,7 +354,7 @@ class Trainer:
                 )
                 for i in range(self.n_eval_envs)  # 10 opponents
             ],
-            start_method="fork",
+            start_method=self.start_method,
         )
 
     def write_csv(self, path):

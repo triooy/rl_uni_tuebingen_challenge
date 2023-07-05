@@ -1,8 +1,10 @@
 import logging
 import time
+from typing import Optional
 from src.utils.wrapper import make_env, CustomWrapper
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.evaluation import evaluate_policy
+
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +26,7 @@ def test(config):
             )
             for i in range(config["test"]["n_eval_envs"])
         ],
-        start_method="fork",
+        start_method="spawn",
     )
     eval_env.render_mode = config["test"]["render_mode"]
 

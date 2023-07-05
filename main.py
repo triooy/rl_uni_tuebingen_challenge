@@ -6,6 +6,7 @@ import logging.config
 from src.hyperparameter.hyperparameter_search import hyperparameter_search
 from src.training.train import train
 from src.training.test import test
+from src.training.evaluation import evaluate
 
 # setup loggers
 logging.config.fileConfig("configs/logging.conf", disable_existing_loggers=False)
@@ -36,6 +37,9 @@ if __name__ == "__main__":
     elif "test" in config and config["test"]:
         logger.info("Start testing...")
         test(config)
+    elif "evaluation" in config and config["evaluation"]:
+        logger.info("Start evaluation...")
+        evaluate(config)
     else:
         logger.info("Start training...")
         train(config)
