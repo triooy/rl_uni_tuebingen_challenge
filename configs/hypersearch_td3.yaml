@@ -1,6 +1,6 @@
 logs:
   csv_filename: "hyper_td3.csv"
-  tensorboard_log_dir: "../hyper_td3"
+  tensorboard_log_dir: "/home/dh/logdir/hyper_td3"
   run_name: "hyper_td3_1"
 
 hyperparameter:
@@ -18,10 +18,10 @@ training:
   n_evaluations: 40
   n_timesteps: 40000000
   normalize: true
-  steps_for_threshold: 3000100
-  reward_threshold: 0
+  steps_for_threshold: 4000100
+  reward_threshold: -3
   steps_for_threshold_2: 1000100
-  reward_threshold_2: -10 
+  reward_threshold_2: -9
 
 agent:
   agent: "TD3"
@@ -47,6 +47,6 @@ selfplay:
   change_opponent_every_n_steps: 128000
   first_opponent_after_n_steps: 1000000
   how_many_to_add: 1
-  best_agents_path: ../best_agents
+  best_agents_path: /home/dh/best_agents
   add_to_best_agents_when_mean_reward_is_above: 9.6
   add_to_best_agents_when_best_agents_mean_reward_is_above: 1

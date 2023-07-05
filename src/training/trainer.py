@@ -250,6 +250,10 @@ class Trainer:
             and self.add_to_best_agents_when_mean_reward_is_above < self.mean_reward
         ):
             self.copy_trained_agent_to_best_agents()
+        self.eval_env.close()
+        self.train_env.close()
+        if self.best_agents_env:
+            self.best_agents_env.close()
 
     def evaluate(self, n_eval_episodes: int = 500):
         """Evaluate the agent"""
