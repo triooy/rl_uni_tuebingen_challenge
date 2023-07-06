@@ -14,12 +14,19 @@ from stable_baselines3.td3.policies import MlpPolicy as TD3_MlpPolicy
 from src.hyperparameter.hyperparams import *
 from src.utils.train_callbacks import SaveEnv, SelfplayCallback, TrialEvalCallback
 from src.utils.wrapper import CustomWrapper, get_env
+from src.utils.custom_policy import ResidualPolicy
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 class Trainer:
+    policies = {
+        "PPO_MlpPolicy": PPO_MlpPolicy,
+        "PPO_ResPolicy": ResidualPolicy,
+        "TD3_MlpPolicy": TD3_MlpPolicy,
+    }
+
     def __init__(
         self,
         agent: Union[PPO, TD3],
@@ -110,10 +117,6 @@ class Trainer:
             self.normalize_env()
 
         # agent parameters
-        self.policies = {
-            "PPO_MlpPolicy": PPO_MlpPolicy,
-            "TD3_MlpPolicy": TD3_MlpPolicy,
-        }
         self.agent = agent
         self.model_type = agent
         self.policy = policy
@@ -146,7 +149,7 @@ class Trainer:
         """Setup agent"""
         logger.info("Setting up agent...")
         if self.agent == "PPO":
-            self.policy = self.policies[self.policy]
+            self.policy = Trainer.policies[self.policy]
             self.agents_kwargs["policy"] = self.policy
             self.agents_kwargs["env"] = self.train_env
             self.agents_kwargs["verbose"] = self.verbose
@@ -155,7 +158,7 @@ class Trainer:
             logger.info(f"PPO Agent parameters: {self.agents_kwargs}")
             logger.info("PPO Agent setup complete...")
         elif self.agent == "TD3":
-            self.policy = self.policies[self.policy]
+            self.policy = Trainer.policies[self.policy]
             self.agents_kwargs["policy"] = self.policy
             self.agents_kwargs["env"] = self.train_env
             self.agents_kwargs["verbose"] = self.verbose
@@ -340,7 +343,7 @@ class Trainer:
             self.n_eval_envs,
             mode=CustomWrapper.NORMAL,
             discrete_action_space=self.discrete_action_space,
-            negative_reward=False,
+            negative_reward=True,
             weak=False,
             start_method=self.start_method,
         )
@@ -357,7 +360,7 @@ class Trainer:
             "model_type": [self.model_type],
             "policy": [self.policy],
             "n_timesteps": [self.n_timesteps],
-            "n_train_envs": [self.run_name],
+            "run_name": [self.run_name],
         }
         if self.selfplay:
             data["best_agent_mean_reward"] = [self.best_agent_mean_reward]

@@ -92,7 +92,7 @@ def evaluate(config):
     for agent1, agent2, opponent in matches:
         if agent2 == None:
             agent1_path = f"{base_path}/{agent1}"
-            print(agent1_path)
+            logger.info(agent1_path)
             mean_reward, std_reward = evaluate_model_vs_model(
                 agent1_path, agent2, config, DISCRETE_ACTION_SPACE, opponent
             )
@@ -103,8 +103,8 @@ def evaluate(config):
         else:
             agent1_path = f"{base_path}/{agent1}"
             agent2_path = f"{base_path}/{agent2}"
-            print(agent1_path)
-            print(agent2_path)
+            logger.info(agent1_path)
+            logger.info(agent2_path)
             mean_reward, std_reward = evaluate_model_vs_model(
                 agent1_path, agent2_path, config, DISCRETE_ACTION_SPACE, opponent
             )
