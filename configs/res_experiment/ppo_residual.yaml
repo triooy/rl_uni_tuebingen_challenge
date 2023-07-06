@@ -1,0 +1,57 @@
+logs:
+  csv_filename: "res_experiment.csv"
+  tensorboard_log_dir: "../res_experiment"
+  run_name: "res_3x3x32"
+
+hyperparameter:
+  do_hyperparameter_search: false
+  study_name: "ppo"
+  storage: "sqlite:///ppo.db"
+  n_trials: 200
+  n_jobs: 1
+  n_startup_trials: 5
+  csv_filename: "hyperparameter_search.csv" 
+
+training:
+  n_train_envs: 128
+  n_eval_envs: 10
+  n_evaluations: 40
+  n_timesteps: 40000000
+  normalize: true
+  steps_for_threshold: 5000100
+  reward_threshold: 5
+  steps_for_threshold_2: 3000100
+  reward_threshold_2: 0
+  start_method: "fork"
+
+agent:
+  agent: "PPO"
+  policy: "PPO_ResPolicy"
+  normalize: true
+  negative_reward: true
+  discrete_action_space: false
+
+agent_parameter: # ignored if hyperparameter search is enabled
+  n_steps: 512
+  batch_size: 2048
+  gamma: 0.999
+  learning_rate: 0.00073
+  ent_coef: 0.0009673352
+  clip_range: 0.2
+  n_epochs: 5
+  gae_lambda: 0.95
+  max_grad_norm: 0.6
+  vf_coef: 0.6482388887006054
+  device: cuda
+  policy_kwargs:
+    { res_blocks: 3, block_dims: [32, 32, 32], ortho_init: true, last_layer_dim_pi: 16, last_layer_dim_vf: 16 }
+
+selfplay:
+  selfplay: true
+  add_opponent_every_n_steps: 1000000
+  change_opponent_every_n_steps: 128000
+  first_opponent_after_n_steps: 1000000
+  how_many_to_add: 1
+  best_agents_path: null
+  add_to_best_agents_when_mean_reward_is_above: 9.6
+  add_to_best_agents_when_best_agents_mean_reward_is_above: 1
