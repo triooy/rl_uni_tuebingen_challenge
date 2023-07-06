@@ -22,6 +22,7 @@ training:
   reward_threshold: 5
   steps_for_threshold_2: 3000100
   reward_threshold_2: 0
+  start_method: "spawn"
 
 agent:
   agent: "PPO"

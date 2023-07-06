@@ -8,3 +8,4 @@ test:
   device: cuda
   discrete_action_space: false
   weak_opponent: false
+  start_method: "fork"
