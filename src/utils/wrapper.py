@@ -9,7 +9,7 @@ import numpy as np
 from gymnasium import spaces
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.utils import set_random_seed
-from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize, SubprocVecEnv
 from stable_baselines3.ppo import PPO
 from stable_baselines3.td3 import TD3
 import logging
@@ -196,6 +196,39 @@ def make_env(
 
     set_random_seed(seed)
     return _init
+
+
+def get_env(
+    n_envs,
+    mode=None,
+    seed=0,
+    discrete_action_space=True,
+    negative_reward=False,
+    env_weights=[96, 2, 2],
+    weak=None,
+    start_method="fork",
+):
+    logger.info(
+        f"Creating {n_envs} environments, with mode {mode}, \
+            seed {seed}, weak {weak}, discrete_action_space {discrete_action_space}, \
+                negative_reward {negative_reward}, env_weights {env_weights}"
+    )
+    env = SubprocVecEnv(
+        [
+            make_env(
+                i,
+                mode=mode,
+                seed=seed,
+                discrete_action_space=discrete_action_space,
+                negativ_reward=negative_reward,
+                weak=weak,  # strength of the basic opponent
+                env_weights=env_weights,
+            )
+            for i in range(n_envs)
+        ],
+        start_method=start_method,
+    )
+    return env
 
 
 class ModelWrapperTD3(TD3):
