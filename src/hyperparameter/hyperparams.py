@@ -102,41 +102,41 @@ def sample_td3_params(trial: optuna.Trial) -> Dict[str, Any]:
     gamma = trial.suggest_categorical(
         "gamma", [0.9, 0.95, 0.98, 0.99, 0.995, 0.999, 0.9999]
     )
-    learning_rate = trial.suggest_float("learning_rate", 1e-5, 1, log=True)
-    batch_size = trial.suggest_categorical(
-        "batch_size", [16, 32, 64, 100, 128, 256, 512, 1024, 2048]
-    )
+    learning_rate = trial.suggest_float(
+        "learning_rate", 1e-5, 1e-3, step=1e-5
+    )  # 1e-5=0.00001
+    batch_size = trial.suggest_categorical("batch_size", [128, 256, 512, 1024, 2048])
     buffer_size = trial.suggest_categorical(
-        "buffer_size", [int(1e4), int(1e5), int(1e6)]
+        "buffer_size", [int(1e5), int(1e6), int(1e7)]
     )
     # Polyak coeff
     tau = trial.suggest_categorical("tau", [0.001, 0.005, 0.01, 0.02, 0.05, 0.08])
 
-    train_freq = trial.suggest_categorical(
-        "train_freq", [32, 64, 128, 256, 512, 1024, 2048, 4096]
-    )
+    train_freq = trial.suggest_categorical("train_freq", [256, 512, 1024, 2048, 4096])
     gradient_steps = train_freq
 
     noise_type = trial.suggest_categorical(
         "noise_type", ["ornstein-uhlenbeck", "normal", None]
     )
     noise_std = trial.suggest_uniform("noise_std", 0, 1)
-    her = False  # trial.suggest_categorical("her", [True, False])
-    normalize = trial.suggest_categorical("normalize", [True, False])
-    negative_reward = trial.suggest_categorical("negative_reward", [True, False])
+
+    normalize = True  # trial.suggest_categorical("normalize", [True, False])
+    negative_reward = (
+        True  # trial.suggest_categorical("negative_reward", [True, False])
+    )
     discrete_action_space = (
         False  # trial.suggest_categorical("discrete_action_space", [True, False])
     )
 
     # NOTE: Add "verybig" to net_arch when tuning HER
-    net_arch = trial.suggest_categorical(
-        "net_arch",
-        [
-            # "small",
-            "medium",
-            "big",
-        ],
-    )
+    net_arch = "medium"  # trial.suggest_categorical(
+    #  "net_arch",
+    # [
+    #     # "small",
+    #     "medium",
+    #     "big",
+    # ],
+    # )
     # activation_fn = trial.suggest_categorical('activation_fn', [nn.Tanh, nn.ReLU, nn.ELU, nn.LeakyReLU])
     # ortho_init = trial.suggest_categorical("ortho_init", [False, True])
     net_arch = {

@@ -7,13 +7,13 @@ import shutil
 from stable_baselines3 import PPO, TD3
 from stable_baselines3.common.callbacks import StopTrainingOnNoModelImprovement
 from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.vec_env import SubprocVecEnv, VecNormalize
+from stable_baselines3.common.vec_env import VecNormalize
 from stable_baselines3.ppo.policies import MlpPolicy as PPO_MlpPolicy
 from stable_baselines3.td3.policies import MlpPolicy as TD3_MlpPolicy
 
 from src.hyperparameter.hyperparams import *
 from src.utils.train_callbacks import SaveEnv, SelfplayCallback, TrialEvalCallback
-from src.utils.wrapper import CustomWrapper, make_env
+from src.utils.wrapper import CustomWrapper, get_env
 import logging
 
 logger = logging.getLogger(__name__)
@@ -313,51 +313,35 @@ class Trainer:
             ]
             logger.info(f"Loaded {len(self.best_agents)} best agents...")
             # create eval envs for best agents
-            self.best_agents_env = SubprocVecEnv(
-                [
-                    make_env(
-                        i,
-                        mode=CustomWrapper.NORMAL,
-                        discrete_action_space=self.discrete_action_space,
-                        negativ_reward=True,
-                        weak=False,
-                    )
-                    for i in range(len(best_agents))
-                ],
+            self.best_agents = get_env(
+                n_envs=len(self.best_agents),
+                mode=CustomWrapper.NORMAL,
+                discrete_action_space=self.discrete_action_space,
+                negativ_reward=False,
+                weak=False,
                 start_method=self.start_method,
             )
-            # set opponents
+            # load best agents
             for i, agent in enumerate(self.best_agents):
                 self.best_agents_env.env_method("set_opponent", agent, indices=[i])
 
     def create_environments(self):
         """Create train and eval environments"""
         logger.info("Creating environments...")
-        self.train_env = SubprocVecEnv(
-            [
-                make_env(
-                    i,
-                    mode=None,
-                    discrete_action_space=self.discrete_action_space,
-                    negativ_reward=self.negative_reward,
-                    weak=False,  # strength of the basic opponent
-                )
-                for i in range(self.n_train_envs)
-            ],
+        self.train_env = get_env(
+            self.n_train_envs,
+            mode=None,
+            discrete_action_space=self.discrete_action_space,
+            negativ_reward=self.negative_reward,
+            weak=False,
             start_method=self.start_method,
         )
-
-        self.eval_env = SubprocVecEnv(
-            [
-                make_env(
-                    i,
-                    mode=CustomWrapper.NORMAL,
-                    discrete_action_space=self.discrete_action_space,
-                    negativ_reward=True,
-                    weak=False,
-                )
-                for i in range(self.n_eval_envs)  # 10 opponents
-            ],
+        self.eval_env = get_env(
+            self.n_eval_envs,
+            mode=CustomWrapper.NORMAL,
+            discrete_action_space=self.discrete_action_space,
+            negative_reward=False,
+            weak=False,
             start_method=self.start_method,
         )
 
@@ -370,6 +354,10 @@ class Trainer:
             "training_time": [self.train_time],
             "mean_reward": [self.mean_reward],
             "std_reward": [self.std_reward],
+            "model_type": [self.model_type],
+            "policy": [self.policy],
+            "n_timesteps": [self.n_timesteps],
+            "n_train_envs": [self.run_name],
         }
         if self.selfplay:
             data["best_agent_mean_reward"] = [self.best_agent_mean_reward]
