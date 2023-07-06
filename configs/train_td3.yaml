@@ -22,7 +22,7 @@ training:
   reward_threshold: 5
   steps_for_threshold_2: 3000100
   reward_threshold_2: 0
-  start_method: "fork"
+  start_method: "spawn"
 
 agent:
   agent: "TD3"
@@ -32,15 +32,17 @@ agent:
   discrete_action_space: false
 
 agent_parameter: # ignored if hyperparameter search is enabled
-  buffer_size: 10000
+  buffer_size: 1000000
   batch_size: 2048
-  gamma: 0.98
-  learning_rate: 0.00328704929928516
-  device: cuda
-  train_freq: 1
-  gradient_steps: 1
+  gamma: 0.99
+  learning_rate: 0.0009200000000000001
+  device: cpu
+  train_freq: 512
+  gradient_steps: 512
   policy_kwargs: { net_arch: [256, 256] }
-  tau: 0.05
+  tau: 0.02
+  policy_delay: 1
+  target_noise_clip: 0.1
 
 selfplay:
   selfplay: true

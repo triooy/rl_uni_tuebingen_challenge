@@ -147,6 +147,9 @@ def sample_td3_params(trial: optuna.Trial) -> Dict[str, Any]:
         # "verybig": [256, 256, 256],
     }[net_arch]
 
+    policy_delay = trial.suggest_categorical("policy_delay", [1, 2, 3, 4])
+    target_noise_clip = trial.suggest_categorical("target_noise_clip", [0.1, 0.2, 0.3])
+
     hyperparams = {
         "gamma": gamma,
         "learning_rate": learning_rate,
@@ -156,6 +159,8 @@ def sample_td3_params(trial: optuna.Trial) -> Dict[str, Any]:
         "gradient_steps": gradient_steps,
         "policy_kwargs": dict(net_arch=net_arch),
         "tau": tau,
+        "policy_delay": policy_delay,
+        "target_noise_clip": target_noise_clip,
     }
 
     if noise_type == "normal":
