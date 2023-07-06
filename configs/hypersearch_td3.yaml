@@ -20,9 +20,9 @@ training:
   normalize: true
   steps_for_threshold: 4000100
   reward_threshold: -2.5
-  steps_for_threshold_2: 800100
+  steps_for_threshold_2: 8000100
   reward_threshold_2: 2.5
-  start_method: "spawn"
+  start_method: "fork"
 
 agent:
   agent: "TD3"
