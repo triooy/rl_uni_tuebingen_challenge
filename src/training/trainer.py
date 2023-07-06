@@ -313,11 +313,11 @@ class Trainer:
             ]
             logger.info(f"Loaded {len(self.best_agents)} best agents...")
             # create eval envs for best agents
-            self.best_agents = get_env(
+            self.best_agents_env = get_env(
                 n_envs=len(self.best_agents),
                 mode=CustomWrapper.NORMAL,
                 discrete_action_space=self.discrete_action_space,
-                negativ_reward=False,
+                negative_reward=False,
                 weak=False,
                 start_method=self.start_method,
             )
@@ -332,7 +332,7 @@ class Trainer:
             self.n_train_envs,
             mode=None,
             discrete_action_space=self.discrete_action_space,
-            negativ_reward=self.negative_reward,
+            negative_reward=self.negative_reward,
             weak=False,
             start_method=self.start_method,
         )

@@ -56,7 +56,7 @@ def evaluate_model_vs_model(
     eval_env = get_env(
         mode=CustomWrapper.NORMAL,
         discrete_action_space=DISCRETE_ACTION_SPACE,
-        negativ_reward=True,
+        negative_reward=True,
         weak=weak_opponent,
         n_envs=config["evaluation"]["n_eval_envs"],
         start_method=config["evaluation"]["start_method"],

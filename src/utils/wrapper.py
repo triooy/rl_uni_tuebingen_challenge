@@ -208,6 +208,11 @@ def get_env(
     weak=None,
     start_method="fork",
 ):
+    logger.info(
+        f"Creating {n_envs} environments, with mode {mode}, \
+            seed {seed}, weak {weak}, discrete_action_space {discrete_action_space}, \
+                negative_reward {negative_reward}, env_weights {env_weights}"
+    )
     env = SubprocVecEnv(
         [
             make_env(

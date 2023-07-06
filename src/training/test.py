@@ -16,7 +16,7 @@ def test(config):
     eval_env = get_env(
         mode=CustomWrapper.NORMAL,
         discrete_action_space=DISCRETE_ACTION_SPACE,
-        negativ_reward=True,
+        negative_reward=True,
         weak=config["test"]["weak_opponent"],
         n_envs=config["test"]["n_eval_envs"],
         start_method=config["test"]["start_method"],
