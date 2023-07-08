@@ -92,6 +92,44 @@ def sample_new_ppo_params2(trial: optuna.Trial) -> Dict[str, Any]:
     }
 
 
+def sample_gsde_ppo_params(trial: optuna.Trial) -> Dict[str, Any]:
+    log_std_init = trial.suggest_uniform("log_std_init", -4, 1)
+    sde_sample_freq = trial.suggest_categorical(
+        "sde_sample_freq", [-1, 8, 16, 32, 64, 128, 256]
+    )
+    squash_output = trial.suggest_categorical("squash_output", [True, False])
+    use_gSDE = True
+    learn_features = trial.suggest_categorical("learn_features", [True, False])
+    use_expln = trial.suggest_categorical("use_expln", [True, False])
+
+    return {
+        "n_steps": 512,
+        "batch_size": 2048,
+        "gamma": 0.999,
+        "learning_rate": 0.00073,
+        "ent_coef": 0.0009673352,
+        "clip_range": 0.2,
+        "n_epochs": 5,
+        "gae_lambda": 0.95,
+        "max_grad_norm": 0.6,
+        "vf_coef": 0.6482388887006054,
+        "normalize": True,
+        "negative_reward": True,
+        "discrete_action_space": False,
+        "use_sde": use_gSDE,
+        "sde_sample_freq": sde_sample_freq,
+        "policy_kwargs": dict(
+            net_arch=[256, 256],
+            ortho_init=True,
+            activation_fn="relu",
+            log_std_init=log_std_init,
+            squash_output=squash_output,
+            learn_features=learn_features,
+            use_expln=use_expln,
+        ),
+    }
+
+
 def sample_td3_params(trial: optuna.Trial) -> Dict[str, Any]:
     """
     Sampler for TD3 hyperparams.
