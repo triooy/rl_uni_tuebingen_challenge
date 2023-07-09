@@ -1,5 +1,5 @@
 from stable_baselines3.common.distributions import Distribution
-import torch as th
+import torch as t
 from torch.distributions import Normal
 from torch import nn
 from typing import Optional, Tuple
@@ -7,8 +7,7 @@ from typing import Optional, Tuple
 
 class Squasher:
     """
-    The Squasher class is used to squash the output of the policy network
-    using tanh
+    The Squasher class is used to squash the output of the policy network using tanh.
     """
 
     def __init__(self, epsilon: float = 1e-6):
@@ -16,123 +15,153 @@ class Squasher:
         self.epsilon = epsilon
 
     @staticmethod
-    def forward(x: th.Tensor) -> th.Tensor:
-        return th.tanh(x)
+    def forward(x: t.Tensor) -> t.Tensor:
+        """
+        Squashes the input tensor using the hyperbolic tangent (tanh) function.
+
+        Args:
+            x (t.Tensor): Input tensor.
+
+        Returns:
+            t.Tensor: Squashed tensor.
+        """
+        return t.tanh(x)
 
     @staticmethod
-    def atanh(x: th.Tensor) -> th.Tensor:
+    def atanh(x: t.Tensor) -> t.Tensor:
         """
-        Inverse of Tanh
+        Computes the inverse hyperbolic tangent (atanh) of the input tensor.
 
-        Taken from Pyro: https://github.com/pyro-ppl/pyro
-        0.5 * torch.log((1 + x ) / (1 - x))
+        Args:
+            x (t.Tensor): Input tensor.
+
+        Returns:
+            t.Tensor: Inverse hyperbolic tangent tensor.
         """
         return 0.5 * (x.log1p() - (-x).log1p())
 
     @staticmethod
-    def inverse(y: th.Tensor) -> th.Tensor:
+    def inverse(y: t.Tensor) -> t.Tensor:
         """
-        Inverse tanh.
+        Computes the inverse of the squashing operation by applying the inverse hyperbolic tangent (atanh)
+        to the input tensor.
 
-        :param y:
-        :return:
+        Args:
+            y (t.Tensor): Input tensor.
+
+        Returns:
+            t.Tensor: Inverse squashed tensor.
         """
-        eps = th.finfo(y.dtype).eps
-        # Clip the action to avoid NaN
+        eps = t.finfo(y.dtype).eps
         return Squasher.atanh(y.clamp(min=-1.0 + eps, max=1.0 - eps))
 
-    def log_prob_correction(self, x: th.Tensor) -> th.Tensor:
-        # Squash correction (from original SAC implementation)
-        return th.log(1.0 - th.tanh(x) ** 2 + self.epsilon)
+    def log_prob_correction(self, x: t.Tensor) -> t.Tensor:
+        """
+        Computes the log probability correction term for the squashed tensor.
+
+        Args:
+            x (t.Tensor): Input tensor.
+
+        Returns:
+            t.Tensor: Log probability correction tensor.
+        """
+        # Squash correction
+        return t.log(1.0 - t.tanh(x) ** 2 + self.epsilon)
 
 
 class StateDependentNoiseDistribution(Distribution):
     """
-    Distribution class for using generalized State Dependent Exploration (gSDE).
-    Paper: https://arxiv.org/abs/2005.05719
+    StateDependentNoiseDistribution is a class representing a noise distribution
+    that is dependent on the state. It extends the Distribution class.
 
-    It is used to create the noise exploration matrix and
-    compute the log probability of an action with that noise.
-
-    :param action_dim: Dimension of the action space.
-    :param full_std: Whether to use (n_features x n_actions) parameters
-        for the std instead of only (n_features,)
-    :param use_expln: Use ``expln()`` function instead of ``exp()`` to ensure
-        a positive standard deviation (cf paper). It allows to keep variance
-        above zero and prevent it from growing too fast. In practice, ``exp()`` is usually enough.
-    :param squash_output: Whether to squash the output using a tanh function,
-        this ensures bounds are satisfied.
-    :param learn_features: Whether to learn features for gSDE or not.
-        This will enable gradients to be backpropagated through the features
-        ``latent_sde`` in the code.
-    :param epsilon: small value to avoid NaN due to numerical imprecision.
+        Args:
+            action_size (int): The number of action dimensions.
+            use_full_std (bool): Flag indicating whether to use full standard deviation.
+                Defaults to True.
+            use_expln (bool): Flag indicating whether to use exponential scaling. Defaults to False.
+            squash_output (bool): Flag indicating whether to squash the output using a squasher.
+                Defaults to False.
+            should_learn_features (bool): Flag indicating whether to learn features. Defaults to False.
+            gsde_epsilon (float): A small epsilon value for numerical stability. Defaults to 1e-6.
     """
 
     def __init__(
         self,
-        action_dim: int,
-        full_std: bool = True,
+        action_size: int,
+        use_full_std: bool = True,
         use_expln: bool = False,
         squash_output: bool = False,
-        learn_features: bool = False,
+        should_learn_features: bool = False,
         gsde_epsilon: float = 1e-6,
     ):
+        # Initialize the StateDependentNoiseDistribution with the provided parameters
         super().__init__()
-        self.action_dim = action_dim
-        self.latent_sde_dim = None
-        self.mean_actions = None
-        self.log_std = None
-        self.weights_dist = None
-        self.exploration_mat = None
-        self.exploration_matrices = None
-        self._latent_sde = None
-        self.use_expln = use_expln
-        self.full_std = full_std
-        self.epsilon = gsde_epsilon
-        self.learn_features = learn_features
+        self.action_size = action_size  # Number of action dimensions
+        self.latent_sde_dim = None  # Dimension of the latent state dependent noise
+        self.mean_actions = None  # Mean actions (initialized later)
+        self.log_std = None  # Log standard deviation (initialized later)
+        self.weights_dist = None  # Distribution of weights used for exploration
+        self.exploration_mat = None  # Exploration matrix for single sample
+        self.exploration_matrices = None  # Exploration matrices for multiple samples
+        self._latent_sde = None  # Latent state-dependent encoding
+        self.use_expln = use_expln  # Flag indicating whether to use exponential scaling
+        self.use_full_std = (
+            use_full_std  # Flag indicating whether to use full standard deviation
+        )
+        self.epsilon = gsde_epsilon  # Small epsilon value for numerical stability
+        self.should_learn_features = (
+            should_learn_features  # Flag indicating whether to learn features
+        )
         if squash_output:
-            self.squasher = Squasher(gsde_epsilon)
+            self.squasher = Squasher(
+                gsde_epsilon
+            )  # Squasher object for output squashing
         else:
             self.squasher = None
 
-    def get_std(self, log_std: th.Tensor) -> th.Tensor:
+    def get_std(self, log_std: t.Tensor) -> t.Tensor:
         """
-        Get the standard deviation from the learned parameter
-        (log of it by default). This ensures that the std is positive.
+        Computes the standard deviation from the provided log standard deviation.
 
-        :param log_std:
-        :return:
+        Args:
+            log_std (t.Tensor): Logarithm of the standard deviation.
+
+        Returns:
+            t.Tensor: Standard deviation tensor.
         """
         if self.use_expln:
-            # From gSDE paper, it allows to keep variance
-            # above zero and prevent it from growing too fast
-            below_threshold = th.exp(log_std) * (log_std <= 0)
-            # Avoid NaN: zeros values that are below zero
+            # Exponential scaling of standard deviation
+            below_threshold = t.exp(log_std) * (log_std <= 0)
             safe_log_std = log_std * (log_std > 0) + self.epsilon
-            above_threshold = (th.log1p(safe_log_std) + 1.0) * (log_std > 0)
+            above_threshold = (t.log1p(safe_log_std) + 1.0) * (log_std > 0)
             std = below_threshold + above_threshold
         else:
-            # Use normal exponential
-            std = th.exp(log_std)
+            # Standard deviation without exponential scaling
+            std = t.exp(log_std)
 
-        if self.full_std:
+        if self.use_full_std:
             return std
-        # Reduce the number of parameters:
-        return th.ones(self.latent_sde_dim, self.action_dim).to(log_std.device) * std
+        return t.ones(self.latent_sde_dim, self.action_size).to(log_std.device) * std
 
-    def sample_weights(self, log_std: th.Tensor, batch_size: int = 1) -> None:
+    def sample_weights(self, log_std: t.Tensor, batch_size: int = 1) -> None:
         """
-        Sample weights for the noise exploration matrix,
-        using a centered Gaussian distribution.
+        Samples weights for exploration based on the provided log standard deviation.
 
-        :param log_std:
-        :param batch_size:
+        Args:
+            log_std (t.Tensor): Logarithm of the standard deviation.
+            batch_size (int): Number of weight samples to generate. Defaults to 1.
+
+        Returns:
+            None
         """
         std = self.get_std(log_std)
-        self.weights_dist = Normal(th.zeros_like(std), std)
-        # Reparametrization trick to pass gradients
+
+        # Create a distribution with mean zero and the computed standard deviation
+        self.weights_dist = Normal(t.zeros_like(std), std)
+
+        # Sample a single exploration matrix
         self.exploration_mat = self.weights_dist.rsample()
-        # Pre-compute matrices in case of parallel exploration
+        # Sample multiple exploration matrices for batched exploration
         self.exploration_matrices = self.weights_dist.rsample((batch_size,))
 
     def proba_distribution_net(
@@ -142,128 +171,186 @@ class StateDependentNoiseDistribution(Distribution):
         latent_sde_dim: Optional[int] = None,
     ) -> Tuple[nn.Module, nn.Parameter]:
         """
-        Create the layers and parameter that represent the distribution:
-        one output will be the deterministic action, the other parameter will be the
-        standard deviation of the distribution that control the weights of the noise matrix.
+        Creates a probability distribution network for generating mean actions and log standard deviation.
 
-        :param latent_dim: Dimension of the last layer of the policy (before the action layer)
-        :param log_std_init: Initial value for the log standard deviation
-        :param latent_sde_dim: Dimension of the last layer of the features extractor
-            for gSDE. By default, it is shared with the policy network.
-        :return:
+        Args:
+            latent_dim (int): Dimensionality of the latent space.
+            log_std_init (float): Initial value for the logarithm of the standard deviation.
+                Defaults to -2.0.
+            latent_sde_dim (Optional[int]): Dimensionality of the latent space for the state-dependent encoding.
+                If None, the latent_dim value is used. Defaults to None.
+
+        Returns:
+            Tuple[nn.Module, nn.Parameter]: Tuple containing the mean actions network and the log standard deviation parameter.
         """
-        # Network for the deterministic action, it represents the mean of the distribution
-        mean_actions_net = nn.Linear(latent_dim, self.action_dim)
-        # When we learn features for the noise, the feature dimension
-        # can be different between the policy and the noise network
+        mean_actions_net = nn.Linear(latent_dim, self.action_size)
+
+        # Set the latent_sde_dim value to either the provided value or latent_dim
         self.latent_sde_dim = latent_dim if latent_sde_dim is None else latent_sde_dim
-        # Reduce the number of parameters if needed
+
+        # Initialize the log standard deviation based on whether full std is used or not
         log_std = (
-            th.ones(self.latent_sde_dim, self.action_dim)
-            if self.full_std
-            else th.ones(self.latent_sde_dim, 1)
+            t.ones(self.latent_sde_dim, self.action_size)
+            if self.use_full_std
+            else t.ones(self.latent_sde_dim, 1)
         )
-        # Transform it to a parameter so it can be optimized
         log_std = nn.Parameter(log_std * log_std_init, requires_grad=True)
-        # Sample an exploration matrix
+
+        # Sample weights for exploration based on the log standard deviation
         self.sample_weights(log_std)
         return mean_actions_net, log_std
 
     def proba_distribution(
-        self, mean_actions: th.Tensor, log_std: th.Tensor, latent_sde: th.Tensor
+        self, mean_actions: t.Tensor, log_std: t.Tensor, latent_sde: t.Tensor
     ) -> Distribution:
         """
-        Create the distribution given its parameters (mean, std)
+        Constructs the probability distribution based on the mean actions, log standard deviation,
+        and the latent state-dependent encoding.
 
-        :param mean_actions:
-        :param log_std:
-        :param latent_sde:
-        :return:
+        Args:
+            mean_actions (t.Tensor): Mean actions tensor.
+            log_std (t.Tensor): Logarithm of the standard deviation tensor.
+            latent_sde (t.Tensor): Latent state-dependent encoding tensor.
+
+        Returns:
+            Distribution: Constructed probability distribution.
         """
-        # Stop gradient if we don't want to influence the features
-        self._latent_sde = latent_sde if self.learn_features else latent_sde.detach()
-        variance = th.mm(self._latent_sde**2, self.get_std(log_std) ** 2)
-        self.distribution = Normal(mean_actions, th.sqrt(variance + self.epsilon))
+        self._latent_sde = (
+            latent_sde if self.should_learn_features else latent_sde.detach()
+        )
+
+        # Compute the variance based on the latent state-dependent encoding and the standard deviation
+        variance = t.mm(self._latent_sde**2, self.get_std(log_std) ** 2)
+        # Construct the distribution using mean actions and the square root of the variance
+        self.distribution = Normal(mean_actions, t.sqrt(variance + self.epsilon))
         return self
 
-    def log_prob(self, actions: th.Tensor) -> th.Tensor:
+    def log_prob(self, actions: t.Tensor) -> t.Tensor:
+        """
+        Computes the log probability of actions in the probability distribution.
+
+        Args:
+            actions (t.Tensor): Actions tensor.
+
+        Returns:
+            t.Tensor: Log probability tensor.
+        """
         if self.squasher is not None:
+            # Apply the squasher's inverse function to obtain Gaussian actions
             gaussian_actions = self.squasher.inverse(actions)
         else:
             gaussian_actions = actions
-        # log likelihood for a gaussian
+
+        # Compute the log probability of the Gaussian actions
         log_prob = self.distribution.log_prob(gaussian_actions)
-        # Sum along action dim
-        log_prob = sum_independent_dims(log_prob)
+        log_prob = StateDependentNoiseDistribution.sum_independent_dims(log_prob)
 
         if self.squasher is not None:
-            # Squash correction (from original SAC implementation)
-            log_prob -= th.sum(
+            # Compute the log probability correction term for the squashed actions
+            log_prob -= t.sum(
                 self.squasher.log_prob_correction(gaussian_actions), dim=1
             )
         return log_prob
 
-    def entropy(self) -> Optional[th.Tensor]:
+    def entropy(self) -> Optional[t.Tensor]:
+        """
+        Computes the entropy of the probability distribution.
+        """
         if self.squasher is not None:
-            # No analytical form,
-            # entropy needs to be estimated using -log_prob.mean()
             return None
-        return sum_independent_dims(self.distribution.entropy())
+        return StateDependentNoiseDistribution.sum_independent_dims(
+            self.distribution.entropy()
+        )
 
-    def sample(self) -> th.Tensor:
+    def sample(self) -> t.Tensor:
         noise = self.get_noise(self._latent_sde)
         actions = self.distribution.mean + noise
         if self.squasher is not None:
             return self.squasher.forward(actions)
         return actions
 
-    def mode(self) -> th.Tensor:
+    def mode(self) -> t.Tensor:
+        """
+        Computes the mode of the probability distribution.
+        """
         actions = self.distribution.mean
         if self.squasher is not None:
             return self.squasher.forward(actions)
         return actions
 
-    def get_noise(self, latent_sde: th.Tensor) -> th.Tensor:
-        latent_sde = latent_sde if self.learn_features else latent_sde.detach()
-        # Default case: only one exploration matrix
+    def get_noise(self, latent_sde: t.Tensor) -> t.Tensor:
+        """
+        Computes the noise based on the latent state-dependent encoding.
+        """
+        # Detach the latent state-dependent encoding if features are not learned
+        latent_sde = latent_sde if self.should_learn_features else latent_sde.detach()
         if len(latent_sde) == 1 or len(latent_sde) != len(self.exploration_matrices):
-            return th.mm(latent_sde, self.exploration_mat.to(latent_sde.device))
-        # Use batch matrix multiplication for efficient computation
-        # (batch_size, n_features) -> (batch_size, 1, n_features)
+            return t.mm(latent_sde, self.exploration_mat.to(latent_sde.device))
         latent_sde = latent_sde.unsqueeze(dim=1)
-        # (batch_size, 1, n_actions)
-        noise = th.bmm(latent_sde, self.exploration_matrices)
+        # Compute the noise based on the latent state-dependent encoding and the exploration matrices
+        noise = t.bmm(latent_sde, self.exploration_matrices)
         return noise.squeeze(dim=1)
 
     def actions_from_params(
         self,
-        mean_actions: th.Tensor,
-        log_std: th.Tensor,
-        latent_sde: th.Tensor,
+        mean_actions: t.Tensor,
+        log_std: t.Tensor,
+        latent_sde: t.Tensor,
         deterministic: bool = False,
-    ) -> th.Tensor:
-        # Update the proba distribution
+    ) -> t.Tensor:
+        """
+        Generates actions based on the mean actions, log standard deviation, and the latent state-dependent encoding.
+
+        Args:
+            mean_actions (t.Tensor): Mean actions tensor.
+            log_std (t.Tensor): Logarithm of the standard deviation tensor.
+            latent_sde (t.Tensor): Latent state-dependent encoding tensor.
+            deterministic (bool): Flag indicating whether to generate deterministic actions.
+                Defaults to False.
+
+        Returns:
+            t.Tensor: Generated actions tensor.
+        """
+        # Construct the probability distribution based on the provided parameters
         self.proba_distribution(mean_actions, log_std, latent_sde)
+        # Generate actions from the distribution
         return self.get_actions(deterministic=deterministic)
 
     def log_prob_from_params(
-        self, mean_actions: th.Tensor, log_std: th.Tensor, latent_sde: th.Tensor
-    ) -> Tuple[th.Tensor, th.Tensor]:
+        self, mean_actions: t.Tensor, log_std: t.Tensor, latent_sde: t.Tensor
+    ) -> Tuple[t.Tensor, t.Tensor]:
+        """
+        Computes the log probability of actions based on the mean actions, log standard deviation,
+        and the latent state-dependent encoding.
+
+        Args:
+            mean_actions (t.Tensor): Mean actions tensor.
+            log_std (t.Tensor): Logarithm of the standard deviation tensor.
+            latent_sde (t.Tensor): Latent state-dependent encoding tensor.
+
+        Returns:
+            Tuple[t.Tensor, t.Tensor]: Tuple containing the generated actions tensor and the log probability tensor.
+        """
+        # Generate actions from the provided parameters
         actions = self.actions_from_params(mean_actions, log_std, latent_sde)
+        # Compute the log probability of the generated actions
         log_prob = self.log_prob(actions)
         return actions, log_prob
 
+    @staticmethod
+    def sum_independent_dims(tensor: t.Tensor) -> t.Tensor:
+        """
+        Computes the sum of tensor elements along independent dimensions.
 
-def sum_independent_dims(tensor: th.Tensor) -> th.Tensor:
-    """
-    Continuous actions are usually considered to be independent,
-    so we can sum components of the ``log_prob`` or the entropy.
+        Args:
+            tensor (t.Tensor): Input tensor.
 
-    :param tensor: shape: (n_batch, n_actions) or (n_batch,)
-    :return: shape: (n_batch,)
-    """
-    if len(tensor.shape) > 1:
-        tensor = tensor.sum(dim=1)
-    else:
-        tensor = tensor.sum()
-    return tensor
+        Returns:
+            t.Tensor: Tensor with the sum of elements along independent dimensions.
+        """
+        if len(tensor.shape) > 1:
+            # Sum tensor elements along dimension 1
+            tensor = tensor.sum(dim=1)
+        else:
+            tensor = tensor.sum()
+        return tensor

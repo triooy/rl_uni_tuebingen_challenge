@@ -99,8 +99,11 @@ def sample_gsde_ppo_params(trial: optuna.Trial) -> Dict[str, Any]:
     )
     squash_output = trial.suggest_categorical("squash_output", [True, False])
     use_gSDE = True
-    learn_features = trial.suggest_categorical("learn_features", [True, False])
+    should_learn_features = trial.suggest_categorical(
+        "should_learn_features", [True, False]
+    )
     use_expln = trial.suggest_categorical("use_expln", [True, False])
+    use_full_std = trial.suggest_categorical("use_full_std", [True, False])
 
     return {
         "n_steps": 512,
@@ -124,8 +127,9 @@ def sample_gsde_ppo_params(trial: optuna.Trial) -> Dict[str, Any]:
             activation_fn="relu",
             log_std_init=log_std_init,
             squash_output=squash_output,
-            learn_features=learn_features,
+            should_learn_features=should_learn_features,
             use_expln=use_expln,
+            use_full_std=use_full_std,
         ),
     }
 

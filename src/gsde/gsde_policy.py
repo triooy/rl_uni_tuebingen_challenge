@@ -34,10 +34,10 @@ class PPO_gSDE_MlpPolicy(BasePolicy):
         activation_fn: Type[nn.Module] = nn.Tanh,
         ortho_init: bool = True,
         log_std_init: float = 0.0,
-        full_std: bool = True,
+        use_full_std: bool = True,
         use_sde: bool = True,
         use_expln: bool = False,
-        learn_features: bool = False,
+        should_learn_features: bool = False,
         squash_output: bool = False,
         features_extractor_class: Type[BaseFeaturesExtractor] = FlattenExtractor,
         features_extractor_kwargs: Optional[Dict[str, Any]] = None,
@@ -48,7 +48,6 @@ class PPO_gSDE_MlpPolicy(BasePolicy):
     ):
         if optimizer_kwargs is None:
             optimizer_kwargs = {}
-            # Small values to avoid NaN in Adam optimizer
             if optimizer_class == th.optim.Adam:
                 optimizer_kwargs["eps"] = 1e-5
 
@@ -79,16 +78,14 @@ class PPO_gSDE_MlpPolicy(BasePolicy):
             self.vf_features_extractor = self.make_features_extractor()
 
         self.log_std_init = log_std_init
-        self.learn_features = learn_features
+        self.should_learn_features = should_learn_features
         self.dist_kwargs = {
-            "full_std": full_std,
+            "use_full_std": use_full_std,
             "squash_output": squash_output,
             "use_expln": use_expln,
-            "learn_features": False,
-            "learn_features": learn_features,
+            "should_learn_features": should_learn_features,
         }
 
-        # Action distribution
         self.action_dist = StateDependentNoiseDistribution(
             int(np.prod(action_space.shape)),
             **self.dist_kwargs,
@@ -108,9 +105,9 @@ class PPO_gSDE_MlpPolicy(BasePolicy):
                 use_sde=self.use_sde,
                 log_std_init=self.log_std_init,
                 squash_output=default_none_kwargs["squash_output"],
-                full_std=default_none_kwargs["full_std"],
+                use_full_std=default_none_kwargs["use_full_std"],
                 use_expln=default_none_kwargs["use_expln"],
-                lr_schedule=self._dummy_schedule,  # dummy lr schedule, not needed for loading policy alone
+                lr_schedule=self._dummy_schedule,
                 ortho_init=self.ortho_init,
                 optimizer_class=self.optimizer_class,
                 optimizer_kwargs=self.optimizer_kwargs,
@@ -132,16 +129,8 @@ class PPO_gSDE_MlpPolicy(BasePolicy):
         )
 
     def _build(self, lr_schedule: Schedule) -> None:
-        """
-        Create the networks and the optimizer.
-
-        :param lr_schedule: Learning rate schedule
-            lr_schedule(1) is the initial learning rate
-        """
         self._build_mlp_extractor()
-
         latent_dim_pi = self.mlp_extractor.latent_dim_pi
-
         self.action_net, self.log_std = self.action_dist.proba_distribution_net(
             latent_dim=latent_dim_pi,
             latent_sde_dim=latent_dim_pi,
@@ -149,8 +138,6 @@ class PPO_gSDE_MlpPolicy(BasePolicy):
         )
 
         self.value_net = nn.Linear(self.mlp_extractor.latent_dim_vf, 1)
-        # Init weights: use orthogonal initialization
-        # with small initial weight for the output
         if self.ortho_init:
             module_gains = {
                 self.features_extractor: np.sqrt(2),
@@ -166,7 +153,6 @@ class PPO_gSDE_MlpPolicy(BasePolicy):
             for module, gain in module_gains.items():
                 module.apply(partial(self.init_weights, gain=gain))
 
-        # Setup optimizer with initial learning rate
         self.optimizer = self.optimizer_class(
             self.parameters(), lr=lr_schedule(1), **self.optimizer_kwargs
         )
@@ -174,14 +160,6 @@ class PPO_gSDE_MlpPolicy(BasePolicy):
     def forward(
         self, obs: th.Tensor, deterministic: bool = False
     ) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
-        """
-        Forward pass in all the networks (actor and critic)
-
-        :param obs: Observation
-        :param deterministic: Whether to sample or use deterministic actions
-        :return: action, value and log probability of the action
-        """
-        # Preprocess the observation if needed
         features = self.extract_features(obs)
         if self.share_features_extractor:
             latent_pi, latent_vf = self.mlp_extractor(features)
@@ -189,7 +167,7 @@ class PPO_gSDE_MlpPolicy(BasePolicy):
             pi_features, vf_features = features
             latent_pi = self.mlp_extractor.forward_actor(pi_features)
             latent_vf = self.mlp_extractor.forward_critic(vf_features)
-        # Evaluate the values for the given observations
+
         values = self.value_net(latent_vf)
         distribution = self._get_action_dist_from_latent(latent_pi)
         actions = distribution.get_actions(deterministic=deterministic)
@@ -200,12 +178,6 @@ class PPO_gSDE_MlpPolicy(BasePolicy):
     def extract_features(
         self, obs: th.Tensor
     ) -> Union[th.Tensor, Tuple[th.Tensor, th.Tensor]]:
-        """
-        Preprocess the observation if needed and extract features.
-
-        :param obs: Observation
-        :return: the output of the features extractor(s)
-        """
         if self.share_features_extractor:
             return super().extract_features(obs, self.features_extractor)
         else:
@@ -222,13 +194,6 @@ class PPO_gSDE_MlpPolicy(BasePolicy):
     def _predict(
         self, observation: th.Tensor, deterministic: bool = False
     ) -> th.Tensor:
-        """
-        Get the action according to the policy for a given observation.
-
-        :param observation:
-        :param deterministic: Whether to use stochastic or deterministic actions
-        :return: Taken action according to the policy
-        """
         return self.get_distribution(observation).get_actions(
             deterministic=deterministic
         )
@@ -236,16 +201,6 @@ class PPO_gSDE_MlpPolicy(BasePolicy):
     def evaluate_actions(
         self, obs: th.Tensor, actions: th.Tensor
     ) -> Tuple[th.Tensor, th.Tensor, Optional[th.Tensor]]:
-        """
-        Evaluate actions according to the current policy,
-        given the observations.
-
-        :param obs: Observation
-        :param actions: Actions
-        :return: estimated value, log likelihood of taking those actions
-            and entropy of the action distribution.
-        """
-        # Preprocess the observation if needed
         features = self.extract_features(obs)
         if self.share_features_extractor:
             latent_pi, latent_vf = self.mlp_extractor(features)
@@ -260,23 +215,11 @@ class PPO_gSDE_MlpPolicy(BasePolicy):
         return values, log_prob, entropy
 
     def get_distribution(self, obs: th.Tensor):
-        """
-        Get the current policy distribution given the observations.
-
-        :param obs:
-        :return: the action distribution.
-        """
         features = super().extract_features(obs, self.pi_features_extractor)
         latent_pi = self.mlp_extractor.forward_actor(features)
         return self._get_action_dist_from_latent(latent_pi)
 
     def predict_values(self, obs: th.Tensor) -> th.Tensor:
-        """
-        Get the estimated values according to the current policy given the observations.
-
-        :param obs: Observation
-        :return: the estimated values.
-        """
         features = super().extract_features(obs, self.vf_features_extractor)
         latent_vf = self.mlp_extractor.forward_critic(features)
         return self.value_net(latent_vf)
