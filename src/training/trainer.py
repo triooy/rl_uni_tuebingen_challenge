@@ -185,7 +185,7 @@ class Trainer:
             self.agents_kwargs["replay_buffer_kwargs"] = {
                 # "buffer_size": self.agents_kwargs["buffer_size"],
                 "env": self.agents_kwargs["env"],
-                "observation_space": self.agents_kwargs["env"].observation_space,
+                # "observation_space": self.agents_kwargs["env"].observation_space,
                 # "action_space": self.agents_kwargs["env"].action_space,
             }
             self.agent = TD3(**self.agents_kwargs)
