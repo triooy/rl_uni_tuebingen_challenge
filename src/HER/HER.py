@@ -58,9 +58,9 @@ class HerReplayBufferCorne(DictReplayBuffer):
         n_envs: int = 1,
         optimize_memory_usage: bool = False,
         handle_timeout_termination: bool = True,
-        n_sampled_goal: int = 4,
+        n_sampled_goal: int = 3,
         goal_selection_strategy: Union[GoalSelectionStrategy, str] = "future",
-        copy_info_dict: bool = False,
+        copy_info_dict: bool = True,
     ):
         super().__init__(
             buffer_size,
@@ -73,6 +73,7 @@ class HerReplayBufferCorne(DictReplayBuffer):
         )
         self.env = env
         self.copy_info_dict = copy_info_dict
+        assert copy_info_dict == True
 
         # convert goal_selection_strategy into GoalSelectionStrategy if string
         if isinstance(goal_selection_strategy, str):

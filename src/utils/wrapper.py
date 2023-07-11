@@ -129,6 +129,7 @@ class CustomWrapper(gym.Wrapper):
         return obs, r, d, t, info
 
     def compute_reward(self, achieved_goal, desired_goal, info):
+        """
         r = 0
         winner = self.info["winner"]
         if self.done:
@@ -142,8 +143,11 @@ class CustomWrapper(gym.Wrapper):
         # return a[:91]
         # return np.array([r], np.float32)
         p = 0.5
-
-        return -np.power(np.dot(np.abs(achieved_goal - desired_goal), 0.5), p)
+        """
+        rew = np.array([info[i]["winner"] for i in range(achieved_goal.shape[0])])
+        # return -np.power(np.dot(np.abs(achieved_goal - desired_goal), 0.5), p)
+        # return np.zeros(achieved_goal.shape[0])
+        return rew
 
     def set_opponent(self, opponents: Union[list, str, lh.BasicOpponent]):
         if isinstance(opponents, type(lh.BasicOpponent())):
