@@ -17,6 +17,8 @@ from src.utils.wrapper import CustomWrapper, get_env
 from src.utils.custom_policy import ResidualPolicy
 import logging
 
+from src.HER.HER import HerReplayBufferCorne
+
 logger = logging.getLogger(__name__)
 
 
@@ -163,6 +165,29 @@ class Trainer:
             self.agents_kwargs["env"] = self.train_env
             self.agents_kwargs["verbose"] = self.verbose
             self.agents_kwargs["tensorboard_log"] = self.tensorboard_log_dir
+
+            """obs_space = self.agents_kwargs["env"].observation_space
+            obs_dim = obs_space.shape[0]
+            goal_dim = obs_space.shape[0]
+            # convert obs_space to Dict
+            obs_space = convert_obs_to_dict2(obs_space, obs_dim, goal_dim)
+
+            HER_class = HerReplayBufferCorne(
+                buffer_size=self.agents_kwargs["buffer_size"],
+                env=self.agents_kwargs["env"],
+                observation_space=obs_space,
+                action_space=self.agents_kwargs["env"].action_space,
+                device=self.agents_kwargs["device"],
+
+            )"""
+
+            self.agents_kwargs["replay_buffer_class"] = HerReplayBufferCorne
+            self.agents_kwargs["replay_buffer_kwargs"] = {
+                # "buffer_size": self.agents_kwargs["buffer_size"],
+                "env": self.agents_kwargs["env"],
+                "observation_space": self.agents_kwargs["env"].observation_space,
+                # "action_space": self.agents_kwargs["env"].action_space,
+            }
             self.agent = TD3(**self.agents_kwargs)
             logger.info(f"TD3 Agent parameters: {self.agents_kwargs}")
             logger.info("TD3 Agent setup complete...")

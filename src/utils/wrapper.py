@@ -256,6 +256,15 @@ class ModelWrapperTD3(TD3):
         self.env = VecNormalize.load(venv=train_env, load_path=path)
         self.env.training = False
 
+        obs_space = spaces.Dict(
+            {
+                "observation": spaces.Box(low=-1, high=1, shape=(18,)),
+                "desired_goal": spaces.Box(low=-1, high=1, shape=(18,)),
+                "achieved_goal": spaces.Box(low=-1, high=1, shape=(18,)),
+            }
+        )
+        self.env.observation_space = obs_space
+
     def predict(self, obs, state=None, episode_start=None, deterministic=False):
         if self.env is not None:
             obs = self.env.normalize_obs(obs)
