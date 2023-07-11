@@ -10,6 +10,7 @@ from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.vec_env import VecNormalize
 from stable_baselines3.ppo.policies import MlpPolicy as PPO_MlpPolicy
 from stable_baselines3.td3.policies import MlpPolicy as TD3_MlpPolicy
+from stable_baselines3.td3.policies import MultiInputPolicy as TD3_MultiInputPolicy
 
 from src.hyperparameter.hyperparams import *
 from src.utils.train_callbacks import SaveEnv, SelfplayCallback, TrialEvalCallback
@@ -27,6 +28,7 @@ class Trainer:
         "PPO_MlpPolicy": PPO_MlpPolicy,
         "PPO_ResPolicy": ResidualPolicy,
         "TD3_MlpPolicy": TD3_MlpPolicy,
+        "TD3_MultiInputPolicy": TD3_MultiInputPolicy,
     }
 
     def __init__(
@@ -62,6 +64,7 @@ class Trainer:
         add_to_best_agents_when_mean_reward_is_above=None,
         add_to_best_agents_when_best_agents_mean_reward_is_above=None,
         start_method: str = "fork",
+        dict_observation_space: bool = False,
         **kwargs,
     ) -> None:
         self.negative_reward = negative_reward
@@ -76,6 +79,10 @@ class Trainer:
         self.save_path = os.path.join(tensorboard_log_dir, run_name)
         self.csv_filename = csv_filename
         self.start_method = start_method
+        self.dict_observation_space = dict_observation_space
+
+        if "dict_observation_space" in agents_kwargs:
+            self.dict_observation_space = self.agents_kwargs["dict_observation_space"]
 
         # create environments
         self.create_environments()
@@ -188,6 +195,7 @@ class Trainer:
                 # "observation_space": self.agents_kwargs["env"].observation_space,
                 # "action_space": self.agents_kwargs["env"].action_space,
             }
+
             self.agent = TD3(**self.agents_kwargs)
             logger.info(f"TD3 Agent parameters: {self.agents_kwargs}")
             logger.info("TD3 Agent setup complete...")
@@ -348,6 +356,7 @@ class Trainer:
                 negative_reward=False,
                 weak=False,
                 start_method=self.start_method,
+                dict_observation_space=self.dict_observation_space,
             )
             # load best agents
             for i, agent in enumerate(self.best_agents):
@@ -363,6 +372,7 @@ class Trainer:
             negative_reward=self.negative_reward,
             weak=False,
             start_method=self.start_method,
+            dict_observation_space=self.dict_observation_space,
         )
         self.eval_env = get_env(
             self.n_eval_envs,
@@ -371,6 +381,7 @@ class Trainer:
             negative_reward=True,
             weak=False,
             start_method=self.start_method,
+            dict_observation_space=self.dict_observation_space,
         )
 
     def write_csv(self, path):

@@ -26,10 +26,11 @@ training:
 
 agent:
   agent: "TD3"
-  policy: "TD3_MlpPolicy"
+  policy: "TD3_MultiInputPolicy"
   normalize: true
   negative_reward: true
   discrete_action_space: false
+  dict_observation_space: true
 
 agent_parameter: # ignored if hyperparameter search is enabled
   buffer_size: 1000000

@@ -35,6 +35,7 @@ class CustomWrapper(gym.Wrapper):
         negativ_reward=True,
         rank=0,
         weak=True,
+        dict_observation_space=False,
     ):
         # Call the parent constructor, so we can access self.env later
         super().__init__(env)
@@ -45,6 +46,8 @@ class CustomWrapper(gym.Wrapper):
         self.opponent = None
         self.opponents = {}
         self.weak = weak
+        self.dict_observation_space = dict_observation_space
+        self.info = {}
         if discrete_action_space:
             env.action_space = spaces.Discrete(7)  # Check if this is still right
         else:
@@ -53,13 +56,41 @@ class CustomWrapper(gym.Wrapper):
         if mode == self.NORMAL:
             player1 = lh.BasicOpponent(weak=weak)
             self.opponent = player1
+        if self.dict_observation_space:
+            obs_space = spaces.Dict(
+                {
+                    "observation": spaces.Box(low=-np.inf, high=np.inf, shape=(18,)),
+                    "desired_goal": spaces.Box(low=-np.inf, high=np.inf, shape=(18,)),
+                    "achieved_goal": spaces.Box(low=-np.inf, high=np.inf, shape=(18,)),
+                }
+            )
+            self.env.observation_space = obs_space
+            self.observation_space = obs_space
+            self.env.compute_reward = self.compute_reward
+
+    def convert_obs_to_dict(self, obs):
+        obs_tmp = {
+            "observation": obs,
+            "desired_goal": obs,
+            "achieved_goal": obs,
+        }
+
+        # set values with current obs
+        # obs_tmp["observation"].value = obs
+        # obs_tmp["desired_goal"].value = obs
+        # obs_tmp["achieved_goal"].value = obs
+
+        return obs_tmp
 
     def reset(self, **kwargs):
         """
         Reset the environment
         """
         obs, info = self.env.reset()
-
+        if self.dict_observation_space:
+            # transform obs to dict for her
+            obs = self.convert_obs_to_dict(obs)
+        self.info = info
         return obs, info
 
     def step(self, action):
@@ -82,6 +113,10 @@ class CustomWrapper(gym.Wrapper):
             action = self.env.discrete_to_continous_action(action)
 
         obs, r, d, t, info = self.env.step(np.hstack([action, a2]))
+
+        if self.dict_observation_space:
+            obs = self.convert_obs_to_dict(obs)
+
         info["TimeLimit.truncated"] = d
         info["terminal_observation"] = obs
         if not self.negativ_reward:
@@ -89,7 +124,26 @@ class CustomWrapper(gym.Wrapper):
         if d:
             d = True
             info["episode"] = {"r": r, "l": self.env.time, "t": d}
+
+        self.info = info
         return obs, r, d, t, info
+
+    def compute_reward(self, achieved_goal, desired_goal, info):
+        r = 0
+        winner = self.info["winner"]
+        if self.done:
+            if self.winner == 0:  # tie
+                r += 0
+            elif self.winner == 1:  # you won
+                r += 10
+            else:  # opponent won
+                r -= 10
+        a = achieved_goal - desired_goal
+        # return a[:91]
+        # return np.array([r], np.float32)
+        p = 0.5
+
+        return -np.power(np.dot(np.abs(achieved_goal - desired_goal), 0.5), p)
 
     def set_opponent(self, opponents: Union[list, str, lh.BasicOpponent]):
         if isinstance(opponents, type(lh.BasicOpponent())):
@@ -161,6 +215,7 @@ def make_env(
     negativ_reward=False,
     env_weights=[96, 2, 2],
     weak=None,
+    dict_observation_space=False,
 ):
     """
     Utility function for multiprocessed env.
@@ -189,17 +244,16 @@ def make_env(
             weak_ = weak
         env = lh.HockeyEnv(mode=new_mode)
         """ NEW """
-        obs_space = spaces.Dict(
-            {
-                "observation": spaces.Box(low=-1, high=1, shape=(18,)),
-                "desired_goal": spaces.Box(low=-1, high=1, shape=(18,)),
-                "achieved_goal": spaces.Box(low=-1, high=1, shape=(18,)),
-            }
-        )
-        env.observation_space = obs_space
+
         """ NEW """
         cenv = CustomWrapper(
-            env, new_mode, discrete_action_space, negativ_reward, rank=rank, weak=weak_
+            env,
+            new_mode,
+            discrete_action_space,
+            negativ_reward,
+            rank=rank,
+            weak=weak_,
+            dict_observation_space=dict_observation_space,
         )
         cenv = Monitor(cenv, filename=None)
         return cenv
@@ -217,6 +271,7 @@ def get_env(
     env_weights=[96, 2, 2],
     weak=None,
     start_method="fork",
+    dict_observation_space=False,
 ):
     logger.info(
         f"Creating {n_envs} environments, with mode {mode}, \
@@ -233,6 +288,7 @@ def get_env(
                 negativ_reward=negative_reward,
                 weak=weak,  # strength of the basic opponent
                 env_weights=env_weights,
+                dict_observation_space=dict_observation_space,
             )
             for i in range(n_envs)
         ],
