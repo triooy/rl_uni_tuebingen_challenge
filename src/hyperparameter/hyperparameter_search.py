@@ -26,10 +26,10 @@ def get_objective_fn(config):
     def objective(trial: optuna.Trial) -> float:
         params = sample_fn(trial)
         normalize = params.pop("normalize")
-        negative_reward = params.pop("negative_reward")
+        reward = params.pop("reward")
         discrete_action_space = params.pop("discrete_action_space")
         config["agent"]["normalize"] = normalize
-        config["agent"]["negative_reward"] = negative_reward
+        config["agent"]["reward"] = reward
         config["agent"]["discrete_action_space"] = discrete_action_space
         config["agent_parameter"] = params
         config["logs"]["run_name"] = run_name + f"_{trial.number}"

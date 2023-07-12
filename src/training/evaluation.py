@@ -1,7 +1,7 @@
 import logging
 import os
 import pandas as pd
-from src.utils.wrapper import get_env, CustomWrapper
+from src.utils.wrapper import get_env, CustomWrapper, Reward
 from stable_baselines3.common.evaluation import evaluate_policy
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ def evaluate_model_vs_model(
     eval_env = get_env(
         mode=CustomWrapper.NORMAL,
         discrete_action_space=DISCRETE_ACTION_SPACE,
-        negative_reward=True,
+        reward=Reward.END,
         weak=weak_opponent,
         n_envs=config["evaluation"]["n_eval_envs"],
         start_method=config["evaluation"]["start_method"],

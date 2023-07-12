@@ -13,8 +13,15 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize, SubprocV
 from stable_baselines3.ppo import PPO
 from stable_baselines3.td3 import TD3
 import logging
+from enum import Enum
 
 logger = logging.getLogger(__name__)
+
+
+class Reward(Enum):
+    DEFAULT = 0
+    POSITIVE = 1
+    END = 2
 
 
 class CustomWrapper(gym.Wrapper):
@@ -32,16 +39,19 @@ class CustomWrapper(gym.Wrapper):
         env,
         mode,
         discrete_action_space=False,
-        negativ_reward=True,
         rank=0,
         weak=True,
+        reward=Reward.DEFAULT,
     ):
         # Call the parent constructor, so we can access self.env later
         super().__init__(env)
         self.rank = rank
         self.mode = mode
         self.discrete_action_space = discrete_action_space
-        self.negativ_reward = negativ_reward
+        if isinstance(reward, int):
+            self.reward = Reward(reward)
+        else:
+            self.reward = reward
         self.opponent = None
         self.opponents = {}
         self.weak = weak
@@ -84,12 +94,22 @@ class CustomWrapper(gym.Wrapper):
         obs, r, d, t, info = self.env.step(np.hstack([action, a2]))
         info["TimeLimit.truncated"] = d
         info["terminal_observation"] = obs
-        if not self.negativ_reward:
-            r = max(r, 0)
+        r = self._compute_reward(r, info, d)
         if d:
             d = True
             info["episode"] = {"r": r, "l": self.env.time, "t": d}
         return obs, r, d, t, info
+
+    def _compute_reward(self, reward, info, done):
+        if self.reward == Reward.DEFAULT:
+            return reward
+        elif self.reward == Reward.POSITIVE:
+            return max(reward, 0)
+        elif self.reward == Reward.END:
+            if done:
+                return reward
+            else:
+                return 0
 
     def set_opponent(self, opponents: Union[list, str, lh.BasicOpponent]):
         if isinstance(opponents, type(lh.BasicOpponent())):
@@ -158,7 +178,7 @@ def make_env(
     mode=None,
     seed=0,
     discrete_action_space=True,
-    negativ_reward=False,
+    reward=Reward.DEFAULT,
     env_weights=[96, 2, 2],
     weak=None,
 ):
@@ -189,7 +209,7 @@ def make_env(
             weak_ = weak
         env = lh.HockeyEnv(mode=new_mode)
         cenv = CustomWrapper(
-            env, new_mode, discrete_action_space, negativ_reward, rank=rank, weak=weak_
+            env, new_mode, discrete_action_space, reward=reward, rank=rank, weak=weak_
         )
         cenv = Monitor(cenv, filename=None)
         return cenv
@@ -203,7 +223,7 @@ def get_env(
     mode=None,
     seed=0,
     discrete_action_space=True,
-    negative_reward=False,
+    reward=Reward.DEFAULT,
     env_weights=[96, 2, 2],
     weak=None,
     start_method="fork",
@@ -211,7 +231,7 @@ def get_env(
     logger.info(
         f"Creating {n_envs} environments, with mode {mode}, \
             seed {seed}, weak {weak}, discrete_action_space {discrete_action_space}, \
-                negative_reward {negative_reward}, env_weights {env_weights}"
+                reward {reward}, env_weights {env_weights}"
     )
     env = SubprocVecEnv(
         [
@@ -220,7 +240,7 @@ def get_env(
                 mode=mode,
                 seed=seed,
                 discrete_action_space=discrete_action_space,
-                negativ_reward=negative_reward,
+                reward=reward,
                 weak=weak,  # strength of the basic opponent
                 env_weights=env_weights,
             )
@@ -243,7 +263,10 @@ class ModelWrapperTD3(TD3):
         train_env = DummyVecEnv(
             [
                 make_env(
-                    i, mode=None, discrete_action_space=False, negativ_reward=False
+                    i,
+                    mode=None,
+                    discrete_action_space=False,
+                    reward=Reward.DEFAULT,
                 )
                 for i in range(1)
             ],
@@ -276,7 +299,7 @@ class ModelWrapperPPO(PPO):
         train_env = DummyVecEnv(
             [
                 make_env(
-                    i, mode=None, discrete_action_space=False, negativ_reward=False
+                    i, mode=None, discrete_action_space=False, reward=Reward.DEFAULT
                 )
                 for i in range(1)
             ],
