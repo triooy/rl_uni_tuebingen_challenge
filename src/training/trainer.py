@@ -29,11 +29,8 @@ class Trainer:
         "PPO_MlpPolicy": PPO_MlpPolicy,
         "PPO_ResPolicy": ResidualPolicy,
         "TD3_MlpPolicy": TD3_MlpPolicy,
-<<<<<<< HEAD
         "TD3_MultiInputPolicy": TD3_MultiInputPolicy,
-=======
         "PPO_gSDE_MlpPolicy": PPO_gSDE_MlpPolicy,
->>>>>>> 1c1ec6adc51573d0d3e8b3b5162218f3a58b9c03
     }
 
     def __init__(
