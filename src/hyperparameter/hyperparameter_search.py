@@ -1,9 +1,14 @@
 from optuna.pruners import MedianPruner
 from optuna.samplers import TPESampler
 import optuna
+import numpy as np
 import os
 from src.training.train import train
-from src.hyperparameter.hyperparams import sample_new_ppo_params2, sample_td3_params
+from src.hyperparameter.hyperparams import (
+    sample_new_ppo_params2,
+    sample_td3_params,
+    sample_gsde_ppo_params,
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -17,29 +22,33 @@ def get_objective_fn(config):
     """
     run_name = config["logs"]["run_name"]
     if config["agent"]["agent"] == "PPO":
-        sample_fn = sample_new_ppo_params2
+        sample_fn = sample_gsde_ppo_params
     elif config["agent"]["agent"] == "TD3":
         sample_fn = sample_td3_params
     else:
         raise NotImplementedError
 
     def objective(trial: optuna.Trial) -> float:
-        params = sample_fn(trial)
-        normalize = params.pop("normalize")
-        negative_reward = params.pop("negative_reward")
-        discrete_action_space = params.pop("discrete_action_space")
-        config["agent"]["normalize"] = normalize
-        config["agent"]["negative_reward"] = negative_reward
-        config["agent"]["discrete_action_space"] = discrete_action_space
-        config["agent_parameter"] = params
-        config["logs"]["run_name"] = run_name + f"_{trial.number}"
-        trainer = train(config)
-        path = os.path.join(
-            config["logs"]["tensorboard_log_dir"],
-            config["hyperparameter"]["csv_filename"],
-        )
-        trainer.write_csv(path)
-        return trainer.mean_reward
+        try:
+            params = sample_fn(trial)
+            normalize = params.pop("normalize")
+            negative_reward = params.pop("negative_reward")
+            discrete_action_space = params.pop("discrete_action_space")
+            config["agent"]["normalize"] = normalize
+            config["agent"]["negative_reward"] = negative_reward
+            config["agent"]["discrete_action_space"] = discrete_action_space
+            config["agent_parameter"] = params
+            config["logs"]["run_name"] = run_name + f"_{trial.number}"
+            trainer = train(config)
+            path = os.path.join(
+                config["logs"]["tensorboard_log_dir"],
+                config["hyperparameter"]["csv_filename"],
+            )
+            trainer.write_csv(path)
+            return trainer.mean_reward
+        except Exception as e:
+            logger.error(e, exc_info=True)
+            return -np.inf
 
     return objective
 
