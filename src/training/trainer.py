@@ -10,12 +10,16 @@ from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.vec_env import VecNormalize
 from stable_baselines3.ppo.policies import MlpPolicy as PPO_MlpPolicy
 from stable_baselines3.td3.policies import MlpPolicy as TD3_MlpPolicy
+from stable_baselines3.td3.policies import MultiInputPolicy as TD3_MultiInputPolicy
 
 from src.hyperparameter.hyperparams import *
 from src.utils.train_callbacks import SaveEnv, SelfplayCallback, TrialEvalCallback
 from src.utils.wrapper import CustomWrapper, get_env, Reward
 from src.utils.custom_policy import ResidualPolicy
+from src.gsde.gsde_policy import PPO_gSDE_MlpPolicy
 import logging
+
+from src.HER.HER import HerReplayBufferCorne
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +29,11 @@ class Trainer:
         "PPO_MlpPolicy": PPO_MlpPolicy,
         "PPO_ResPolicy": ResidualPolicy,
         "TD3_MlpPolicy": TD3_MlpPolicy,
+<<<<<<< HEAD
+        "TD3_MultiInputPolicy": TD3_MultiInputPolicy,
+=======
+        "PPO_gSDE_MlpPolicy": PPO_gSDE_MlpPolicy,
+>>>>>>> 1c1ec6adc51573d0d3e8b3b5162218f3a58b9c03
     }
 
     def __init__(
@@ -60,6 +69,7 @@ class Trainer:
         add_to_best_agents_when_mean_reward_is_above=None,
         add_to_best_agents_when_best_agents_mean_reward_is_above=None,
         start_method: str = "fork",
+        dict_observation_space: bool = False,
         **kwargs,
     ) -> None:
         self.reward = reward
@@ -74,6 +84,10 @@ class Trainer:
         self.save_path = os.path.join(tensorboard_log_dir, run_name)
         self.csv_filename = csv_filename
         self.start_method = start_method
+        self.dict_observation_space = dict_observation_space
+
+        if "dict_observation_space" in agents_kwargs:
+            self.dict_observation_space = self.agents_kwargs["dict_observation_space"]
 
         # create environments
         self.create_environments()
@@ -166,6 +180,30 @@ class Trainer:
             self.agents_kwargs["env"] = self.train_env
             self.agents_kwargs["verbose"] = self.verbose
             self.agents_kwargs["tensorboard_log"] = self.tensorboard_log_dir
+
+            """obs_space = self.agents_kwargs["env"].observation_space
+            obs_dim = obs_space.shape[0]
+            goal_dim = obs_space.shape[0]
+            # convert obs_space to Dict
+            obs_space = convert_obs_to_dict2(obs_space, obs_dim, goal_dim)
+
+            HER_class = HerReplayBufferCorne(
+                buffer_size=self.agents_kwargs["buffer_size"],
+                env=self.agents_kwargs["env"],
+                observation_space=obs_space,
+                action_space=self.agents_kwargs["env"].action_space,
+                device=self.agents_kwargs["device"],
+
+            )"""
+
+            self.agents_kwargs["replay_buffer_class"] = HerReplayBufferCorne
+            self.agents_kwargs["replay_buffer_kwargs"] = {
+                # "buffer_size": self.agents_kwargs["buffer_size"],
+                "env": self.agents_kwargs["env"],
+                # "observation_space": self.agents_kwargs["env"].observation_space,
+                # "action_space": self.agents_kwargs["env"].action_space,
+            }
+
             self.agent = TD3(**self.agents_kwargs)
             logger.info(f"TD3 Agent parameters: {self.agents_kwargs}")
             logger.info("TD3 Agent setup complete...")
@@ -329,6 +367,7 @@ class Trainer:
                 reward=Reward.END,
                 weak=False,
                 start_method=self.start_method,
+                dict_observation_space=self.dict_observation_space,
             )
             # load best agents
             for i, agent in enumerate(self.best_agents):
@@ -344,6 +383,7 @@ class Trainer:
             reward=self.reward,
             weak=False,
             start_method=self.start_method,
+            dict_observation_space=self.dict_observation_space,
         )
         self.eval_env = get_env(
             self.n_eval_envs,
@@ -352,6 +392,7 @@ class Trainer:
             reward=Reward.END,
             weak=False,
             start_method=self.start_method,
+            dict_observation_space=self.dict_observation_space,
         )
 
     def write_csv(self, path):
