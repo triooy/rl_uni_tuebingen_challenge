@@ -58,7 +58,7 @@ class HerReplayBufferCorne(DictReplayBuffer):
         n_envs: int = 1,
         optimize_memory_usage: bool = False,
         handle_timeout_termination: bool = True,
-        n_sampled_goal: int = 3,
+        n_sampled_goal: int = 4,
         goal_selection_strategy: Union[GoalSelectionStrategy, str] = "future",
         copy_info_dict: bool = True,
     ):

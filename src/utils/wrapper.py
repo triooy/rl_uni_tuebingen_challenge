@@ -69,9 +69,15 @@ class CustomWrapper(gym.Wrapper):
             self.env.compute_reward = self.compute_reward
 
     def convert_obs_to_dict(self, obs):
+
+        obs_desired = obs.copy()
+        obs_desired[12] = 4.0
+        # sample between 0.8 and -0.8
+        obs_desired[13] = np.random.uniform(-0.8, 0.8)
+
         obs_tmp = {
             "observation": obs,
-            "desired_goal": obs,
+            "desired_goal": obs_desired,
             "achieved_goal": obs,
         }
 
@@ -144,7 +150,7 @@ class CustomWrapper(gym.Wrapper):
         # return np.array([r], np.float32)
         p = 0.5
         """
-        rew = np.array([info[i]["winner"] for i in range(achieved_goal.shape[0])])
+        rew = np.array([5 * info[i]["winner"] for i in range(achieved_goal.shape[0])])
         # return -np.power(np.dot(np.abs(achieved_goal - desired_goal), 0.5), p)
         # return np.zeros(achieved_goal.shape[0])
         return rew
