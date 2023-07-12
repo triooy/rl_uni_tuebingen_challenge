@@ -96,7 +96,6 @@ class CustomWrapper(gym.Wrapper):
         info["terminal_observation"] = obs
         r = self._compute_reward(r, info, d)
         if d:
-            d = True
             info["episode"] = {"r": r, "l": self.env.time, "t": d}
         return obs, r, d, t, info
 
@@ -107,7 +106,12 @@ class CustomWrapper(gym.Wrapper):
             return max(reward, 0)
         elif self.reward == Reward.END:
             if done:
-                return reward
+                if info["winner"] == 1:
+                    return 10
+                elif info["winner"] == 0:
+                    return 0
+                else:
+                    return -10
             else:
                 return 0
 

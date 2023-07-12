@@ -137,6 +137,9 @@ class Trainer:
         self.std_reward = 0
         self.best_agent_mean_reward = -np.inf
         self.best_agent_std_reward = 0
+        self.win_rate = 0
+        self.loss_rate = 0
+        self.draw_rate = 0
         self.train_time = 0
         self.add_to_best_agents_when_best_agents_mean_reward_is_above = (
             add_to_best_agents_when_best_agents_mean_reward_is_above
@@ -241,6 +244,9 @@ class Trainer:
         self.train_time = time.time() - start_time
         # Evaluate the final model
         self.mean_reward = self.eval_callback.best_mean_reward
+        self.win_rate = self.eval_callback.win_rate
+        self.loss_rate = self.eval_callback.loss_rate
+        self.draw_rate = self.eval_callback.draw_rate
         logger.info(f"mean_reward:{self.mean_reward:.2f}")
 
         if self.best_agents_path:
@@ -357,6 +363,9 @@ class Trainer:
             "training_time": [self.train_time],
             "mean_reward": [self.mean_reward],
             "std_reward": [self.std_reward],
+            "win_rate": [self.win_rate],
+            "loss_rate": [self.loss_rate],
+            "draw_rate": [self.draw_rate],
             "model_type": [self.model_type],
             "policy": [self.policy],
             "n_timesteps": [self.n_timesteps],
