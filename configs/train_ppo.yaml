@@ -28,7 +28,7 @@ agent:
   agent: "PPO"
   policy: "PPO_MlpPolicy"
   normalize: true
-  negative_reward: true
+  reward: 0
   discrete_action_space: false
 
 agent_parameter: # ignored if hyperparameter search is enabled

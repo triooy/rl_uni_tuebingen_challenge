@@ -14,7 +14,7 @@ from stable_baselines3.td3.policies import MultiInputPolicy as TD3_MultiInputPol
 
 from src.hyperparameter.hyperparams import *
 from src.utils.train_callbacks import SaveEnv, SelfplayCallback, TrialEvalCallback
-from src.utils.wrapper import CustomWrapper, get_env
+from src.utils.wrapper import CustomWrapper, get_env, Reward
 from src.utils.custom_policy import ResidualPolicy
 from src.gsde.gsde_policy import PPO_gSDE_MlpPolicy
 import logging
@@ -41,7 +41,7 @@ class Trainer:
         agent: Union[PPO, TD3],
         policy: str,
         n_timesteps: int = 1_000_000,
-        negative_reward: bool = True,
+        reward: Reward = Reward.DEFAULT,
         discrete_action_space: bool = False,
         normalize: bool = True,
         n_train_envs: int = 128,
@@ -72,7 +72,7 @@ class Trainer:
         dict_observation_space: bool = False,
         **kwargs,
     ) -> None:
-        self.negative_reward = negative_reward
+        self.reward = reward
         self.discrete_action_space = discrete_action_space
         self.n_train_envs = n_train_envs
         self.n_eval_envs = n_eval_envs
@@ -358,7 +358,7 @@ class Trainer:
                 n_envs=len(self.best_agents),
                 mode=CustomWrapper.NORMAL,
                 discrete_action_space=self.discrete_action_space,
-                negative_reward=False,
+                reward=Reward.END,
                 weak=False,
                 start_method=self.start_method,
                 dict_observation_space=self.dict_observation_space,
@@ -374,7 +374,7 @@ class Trainer:
             self.n_train_envs,
             mode=None,
             discrete_action_space=self.discrete_action_space,
-            negative_reward=self.negative_reward,
+            reward=self.reward,
             weak=False,
             start_method=self.start_method,
             dict_observation_space=self.dict_observation_space,
@@ -383,7 +383,7 @@ class Trainer:
             self.n_eval_envs,
             mode=CustomWrapper.NORMAL,
             discrete_action_space=self.discrete_action_space,
-            negative_reward=True,
+            reward=Reward.END,
             weak=False,
             start_method=self.start_method,
             dict_observation_space=self.dict_observation_space,
@@ -393,7 +393,7 @@ class Trainer:
         data = {
             "params": [str(self.agents_kwargs)],
             "normalize": [self.normalize],
-            "negativ_reward": [self.negative_reward],
+            "reward": [self.reward],
             "discrete_action_space": [self.discrete_action_space],
             "training_time": [self.train_time],
             "mean_reward": [self.mean_reward],

@@ -29,26 +29,22 @@ def get_objective_fn(config):
         raise NotImplementedError
 
     def objective(trial: optuna.Trial) -> float:
-        try:
-            params = sample_fn(trial)
-            normalize = params.pop("normalize")
-            negative_reward = params.pop("negative_reward")
-            discrete_action_space = params.pop("discrete_action_space")
-            config["agent"]["normalize"] = normalize
-            config["agent"]["negative_reward"] = negative_reward
-            config["agent"]["discrete_action_space"] = discrete_action_space
-            config["agent_parameter"] = params
-            config["logs"]["run_name"] = run_name + f"_{trial.number}"
-            trainer = train(config)
-            path = os.path.join(
-                config["logs"]["tensorboard_log_dir"],
-                config["hyperparameter"]["csv_filename"],
-            )
-            trainer.write_csv(path)
-            return trainer.mean_reward
-        except Exception as e:
-            logger.error(e, exc_info=True)
-            return -np.inf
+        params = sample_fn(trial)
+        normalize = params.pop("normalize")
+        reward = params.pop("reward")
+        discrete_action_space = params.pop("discrete_action_space")
+        config["agent"]["normalize"] = normalize
+        config["agent"]["reward"] = reward
+        config["agent"]["discrete_action_space"] = discrete_action_space
+        config["agent_parameter"] = params
+        config["logs"]["run_name"] = run_name + f"_{trial.number}"
+        trainer = train(config)
+        path = os.path.join(
+            config["logs"]["tensorboard_log_dir"],
+            config["hyperparameter"]["csv_filename"],
+        )
+        trainer.write_csv(path)
+        return trainer.mean_reward
 
     return objective
 

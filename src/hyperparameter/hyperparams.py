@@ -39,9 +39,7 @@ def sample_new_ppo_params2(trial: optuna.Trial) -> Dict[str, Any]:
     # net_arch = trial.suggest_categorical("net_arch", ["small", "medium"])
     # net_arch = 'medium'
     normalize = True  # trial.suggest_categorical("normalize", [True, False])
-    negative_reward = (
-        True  # trial.suggest_categorical("negative_reward", [True, False])
-    )
+    reward = 0  # trial.suggest_categorical("reward", [0,1,2])
     discrete_action_space = (
         False  # trial.suggest_categorical("discrete_action_space", [True, False])
     )
@@ -84,7 +82,7 @@ def sample_new_ppo_params2(trial: optuna.Trial) -> Dict[str, Any]:
         "max_grad_norm": max_grad_norm,
         "vf_coef": vf_coef,
         "normalize": normalize,
-        "negative_reward": negative_reward,
+        "reward": reward,
         "discrete_action_space": discrete_action_space,
         "policy_kwargs": dict(
             net_arch=[256, 256], ortho_init=True, activation_fn="relu"
@@ -163,9 +161,7 @@ def sample_td3_params(trial: optuna.Trial) -> Dict[str, Any]:
     noise_std = trial.suggest_uniform("noise_std", 0, 1)
 
     normalize = True  # trial.suggest_categorical("normalize", [True, False])
-    negative_reward = (
-        True  # trial.suggest_categorical("negative_reward", [True, False])
-    )
+    reward = 0  # trial.suggest_categorical("reward", [0,1,2])
     discrete_action_space = (
         False  # trial.suggest_categorical("discrete_action_space", [True, False])
     )
@@ -215,7 +211,7 @@ def sample_td3_params(trial: optuna.Trial) -> Dict[str, Any]:
         )
 
     hyperparams["normalize"] = normalize
-    hyperparams["negative_reward"] = negative_reward
+    hyperparams["reward"] = reward
     hyperparams["discrete_action_space"] = discrete_action_space
 
     return hyperparams
@@ -260,7 +256,7 @@ def sample_ppo_params(trial: optuna.Trial) -> Dict[str, Any]:
     vf_coef = trial.suggest_uniform("vf_coef", 0, 1)
     net_arch = trial.suggest_categorical("net_arch", ["small", "medium"])
     normalize = trial.suggest_categorical("normalize", [True, False])
-    negative_reward = trial.suggest_categorical("negative_reward", [True, False])
+    reward = trial.suggest_categorical("reward", [0, 1, 2])
     discrete_action_space = trial.suggest_categorical("discrete_action_space", [False])
     # Uncomment for gSDE (continuous actions)
     # log_std_init = trial.suggest_uniform("log_std_init", -4, 1)
@@ -312,6 +308,6 @@ def sample_ppo_params(trial: optuna.Trial) -> Dict[str, Any]:
             ortho_init=ortho_init,
         ),
         "normalize": normalize,
-        "negative_reward": negative_reward,
+        "reward": reward,
         "discrete_action_space": discrete_action_space,
     }

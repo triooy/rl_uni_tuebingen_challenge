@@ -28,7 +28,7 @@ agent:
   agent: "TD3"
   policy: "TD3_MultiInputPolicy"
   normalize: true
-  negative_reward: true
+  reward: 0
   discrete_action_space: false
   dict_observation_space: true
 
