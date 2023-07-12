@@ -232,19 +232,19 @@ class TrialEvalCallback(EvalCallback):
                     **kwargs,
                 )
             unique, counts = np.unique(episode_rewards, return_counts=True)
-            wins, draw, loss = 0, 0, 0
-            wins = np.where(unique == 10)[0]
+            wins, draws, losses = 0, 0, 0
+            win = np.where(unique == 10)[0]
             draw = np.where(unique == 0)[0]
             loss = np.where(unique == -10)[0]
-            if len(wins) > 0:
-                wins = counts[wins][0]
+            if len(win) > 0:
+                win = counts[win][0]
+                wins = win / len(episode_rewards)
             if len(draw) > 0:
                 draw = counts[draw][0]
+                draws = draw / len(episode_rewards)
             if len(loss) > 0:
                 loss = counts[loss][0]
-            wins = wins / len(episode_rewards)
-            draws = draw / len(episode_rewards)
-            losses = loss / len(episode_rewards)
+                losses = loss / len(episode_rewards)
             self.logger.record("eval/wins", float(wins))
             self.logger.record("eval/draws", float(draws))
             self.logger.record("eval/losses", float(losses))
