@@ -14,6 +14,8 @@ from stable_baselines3.her.goal_selection_strategy import (
     GoalSelectionStrategy,
 )
 
+from src.HER.DICT import DictReplayBuffer
+
 
 class HerReplayBufferCorne(DictReplayBuffer):
     """
@@ -104,28 +106,20 @@ class HerReplayBufferCorne(DictReplayBuffer):
         self.ep_length = np.zeros((self.buffer_size, self.n_envs), dtype=np.int64)
         self._current_ep_start = np.zeros(self.n_envs, dtype=np.int64)
 
+    """
     def __getstate__(self) -> Dict[str, Any]:
-        """
-        Gets state for pickling.
-
-        Excludes self.env, as in general Env's may not be pickleable.
-        """
         state = self.__dict__.copy()
         # these attributes are not pickleable
         del state["env"]
         return state
+    """
 
+    """
     def __setstate__(self, state: Dict[str, Any]) -> None:
-        """
-        Restores pickled state.
-
-        User must call ``set_env()`` after unpickling before using.
-
-        :param state:
-        """
         self.__dict__.update(state)
         assert "env" not in state
         self.env = None
+    """
 
     def set_env(self, env: VecEnv) -> None:
         """
