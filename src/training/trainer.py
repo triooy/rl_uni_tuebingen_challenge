@@ -15,6 +15,7 @@ from src.hyperparameter.hyperparams import *
 from src.utils.train_callbacks import SaveEnv, SelfplayCallback, TrialEvalCallback
 from src.utils.wrapper import CustomWrapper, get_env, Reward
 from src.utils.custom_policy import ResidualPolicy
+from src.gsde.gsde_policy import PPO_gSDE_MlpPolicy
 import logging
 
 logger = logging.getLogger(__name__)
@@ -25,6 +26,7 @@ class Trainer:
         "PPO_MlpPolicy": PPO_MlpPolicy,
         "PPO_ResPolicy": ResidualPolicy,
         "TD3_MlpPolicy": TD3_MlpPolicy,
+        "PPO_gSDE_MlpPolicy": PPO_gSDE_MlpPolicy,
     }
 
     def __init__(

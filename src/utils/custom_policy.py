@@ -25,7 +25,7 @@ class ResidualNetwork(nn.Module):
     def __init__(
         self,
         feature_dim: int,
-        res_blocks: int = 3,
+        res_blocks: Union[int, list] = 3,
         block_dims: List[int] = [64, 64, 64],
         last_layer_dim_pi: int = 64,
         last_layer_dim_vf: int = 64,
@@ -58,6 +58,23 @@ class ResidualNetwork(nn.Module):
         return ResNet(nn.Sequential(*net))
 
     def build_res_net(self, last_layer) -> nn.Module:
+        if isinstance(self.res_blocks, int):
+            return self.build__resnet_1_connection(last_layer)
+        elif isinstance(self.res_blocks, list):
+            return self.build_resnet_2_connections(last_layer)
+        else:
+            raise ValueError("res_blocks must be either int or list")
+
+    def forward(self, features: t.Tensor) -> Tuple[t.Tensor, t.Tensor]:
+        return self.forward_actor(features), self.forward_critic(features)
+
+    def forward_actor(self, features: t.Tensor) -> t.Tensor:
+        return self.policy_net(features)
+
+    def forward_critic(self, features: t.Tensor) -> t.Tensor:
+        return self.value_net(features)
+
+    def build__resnet_1_connection(self, last_layer) -> nn.Module:
         net = [nn.Linear(self.input_dim, self.block_dims[0]), nn.ReLU()]
         input_dim = self.block_dims[0]
         for i in range(self.res_blocks):
@@ -68,14 +85,23 @@ class ResidualNetwork(nn.Module):
         net.append(nn.ReLU())
         return nn.Sequential(*net)
 
-    def forward(self, features: t.Tensor) -> Tuple[t.Tensor, t.Tensor]:
-        return self.forward_actor(features), self.forward_critic(features)
+    def build_resnet_2_connections(self, last_layer) -> nn.Module:
+        small_blocks = self.res_blocks[0]
+        big_blocks = self.res_blocks[1]
+        net = [nn.Linear(self.input_dim, self.block_dims[0]), nn.ReLU()]
+        input_dim = self.block_dims[0]
 
-    def forward_actor(self, features: t.Tensor) -> t.Tensor:
-        return self.policy_net(features)
-
-    def forward_critic(self, features: t.Tensor) -> t.Tensor:
-        return self.value_net(features)
+        for i in range(small_blocks):
+            inner_net = []
+            for y in range(big_blocks):
+                res_block = self.build_res_block(input_dim)
+                inner_net.append(res_block)
+                input_dim = res_block.module[-2].out_features
+            inner_res = ResNet(nn.Sequential(*inner_net))
+            net.append(inner_res)
+            input_dim = inner_res.module[-1].module[-2].out_features
+        net.append(nn.Linear(input_dim, last_layer))
+        return nn.Sequential(*net)
 
 
 class ResidualPolicy(acp):

@@ -1,0 +1,67 @@
+logs:
+  csv_filename: "gSDE_ppo.csv"
+  tensorboard_log_dir: "../gSDE_ppo"
+  run_name: "gsde_ppo"
+
+hyperparameter:
+  do_hyperparameter_search: false
+  study_name: "gSDE"
+  storage: "sqlite:////home/dh/logdir/ppo.db"
+  n_trials: 200
+  n_jobs: 1
+  n_startup_trials: 5
+  csv_filename: "hyperparameter_search_ppo_gSDE.csv"
+
+training:
+  n_train_envs: 128
+  n_eval_envs: 10
+  n_evaluations: 20
+  n_timesteps: 20000000
+  normalize: true
+  steps_for_threshold: 5000100
+  reward_threshold: 5
+  steps_for_threshold_2: 3000100
+  reward_threshold_2: 0
+  start_method: "fork"
+
+agent:
+  agent: "PPO"
+  policy: "PPO_gSDE_MlpPolicy"
+  normalize: true
+  negative_reward: true
+  discrete_action_space: false
+
+agent_parameter: # ignored if hyperparameter search is enabled
+  n_steps: 512
+  batch_size: 2048
+  gamma: 0.999
+  learning_rate: 0.00073
+  ent_coef: 0.0009673352
+  clip_range: 0.2
+  n_epochs: 5
+  gae_lambda: 0.95
+  max_grad_norm: 0.6
+  vf_coef: 0.6482388887006054
+  use_sde: true
+  device: cuda
+  policy_kwargs:
+    { 
+      net_arch: [256, 256], 
+      ortho_init: true,
+      activation_fn: "relu", 
+      log_std_init: -0.3255225168499072, 
+      squash_output: false,
+      full_std: true,
+      use_expln: false,
+      learn_features: true,
+      }
+
+selfplay:
+  selfplay: true
+  add_opponent_every_n_steps: 1000000
+  change_opponent_every_n_steps: 128000
+  first_opponent_after_n_steps: 1000000
+  how_many_to_add: 1
+  best_agents_path: null
+  add_to_best_agents_when_mean_reward_is_above: 9.6
+  add_to_best_agents_when_best_agents_mean_reward_is_above: 1
