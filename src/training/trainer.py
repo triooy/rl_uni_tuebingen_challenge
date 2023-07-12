@@ -16,6 +16,7 @@ from src.hyperparameter.hyperparams import *
 from src.utils.train_callbacks import SaveEnv, SelfplayCallback, TrialEvalCallback
 from src.utils.wrapper import CustomWrapper, get_env
 from src.utils.custom_policy import ResidualPolicy
+from src.gsde.gsde_policy import PPO_gSDE_MlpPolicy
 import logging
 
 from src.HER.HER import HerReplayBufferCorne
@@ -28,7 +29,11 @@ class Trainer:
         "PPO_MlpPolicy": PPO_MlpPolicy,
         "PPO_ResPolicy": ResidualPolicy,
         "TD3_MlpPolicy": TD3_MlpPolicy,
+<<<<<<< HEAD
         "TD3_MultiInputPolicy": TD3_MultiInputPolicy,
+=======
+        "PPO_gSDE_MlpPolicy": PPO_gSDE_MlpPolicy,
+>>>>>>> 1c1ec6adc51573d0d3e8b3b5162218f3a58b9c03
     }
 
     def __init__(
