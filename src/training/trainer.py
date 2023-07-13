@@ -19,7 +19,7 @@ from src.utils.custom_policy import ResidualPolicy
 from src.gsde.gsde_policy import PPO_gSDE_MlpPolicy
 import logging
 
-from src.HER.HER import HerReplayBufferCorne
+from src.HER.HER2 import HerReplayBufferCorneTest
 
 logger = logging.getLogger(__name__)
 
@@ -193,7 +193,8 @@ class Trainer:
 
             )"""
 
-            self.agents_kwargs["replay_buffer_class"] = HerReplayBufferCorne
+            self.agents_kwargs["replay_buffer_class"] = HerReplayBufferCorneTest
+
             self.agents_kwargs["replay_buffer_kwargs"] = {
                 # "buffer_size": self.agents_kwargs["buffer_size"],
                 "env": self.agents_kwargs["env"],

@@ -7,13 +7,16 @@ import torch as th
 from gymnasium import spaces
 
 from stable_baselines3.common.preprocessing import get_action_dim, get_obs_shape
+
+"""
 from stable_baselines3.common.type_aliases import (
     DictReplayBufferSamples,
     DictRolloutBufferSamples,
     ReplayBufferSamples,
     RolloutBufferSamples,
 )
-from stable_baselines3.common.utils import get_device
+"""
+# from stable_baselines3.common.utils import get_device
 from stable_baselines3.common.vec_env import VecNormalize
 import psutil
 
@@ -47,23 +50,17 @@ class BaseBuffer(ABC):
         self.action_dim = get_action_dim(action_space)
         self.pos = 0
         self.full = False
-        self.device = get_device(device)
+        self.device = "cpu"  # get_device(device)
         self.n_envs = n_envs
 
+    """
     @staticmethod
     def swap_and_flatten(arr: np.ndarray) -> np.ndarray:
-        """
-        Swap and then flatten axes 0 (buffer_size) and 1 (n_envs)
-        to convert shape from [n_steps, n_envs, ...] (when ... is the shape of the features)
-        to [n_steps * n_envs, ...] (which maintain the order)
-
-        :param arr:
-        :return:
-        """
         shape = arr.shape
         if len(shape) < 3:
             shape = (*shape, 1)
         return arr.swapaxes(0, 1).reshape(shape[0] * shape[1], *shape[2:])
+    """
 
     def size(self) -> int:
         """
@@ -78,20 +75,18 @@ class BaseBuffer(ABC):
         raise NotImplementedError()
     """
 
+    """
     def extend(self, *args, **kwargs) -> None:
-        """
-        Add a new batch of transitions to the buffer
-        """
+
         # Do a for loop along the batch axis
         for data in zip(*args):
             self.add(*data)
 
     def reset(self) -> None:
-        """
-        Reset the buffer.
-        """
+
         self.pos = 0
         self.full = False
+    """
 
     """
     def sample(self, batch_size: int, env: Optional[VecNormalize] = None):
