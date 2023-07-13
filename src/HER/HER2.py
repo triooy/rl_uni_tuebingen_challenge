@@ -1,6 +1,6 @@
 import copy
 import warnings
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Tuple
 
 import numpy as np
 import torch as th
@@ -14,10 +14,64 @@ from stable_baselines3.her.goal_selection_strategy import (
     GoalSelectionStrategy,
 )
 
-from src.HER.DICT import ReplayBuffer
+from src.HER.DICT import BaseBuffer
 
 
-class HerReplayBufferCorneTest(ReplayBuffer):
+def get_obs_shape(
+    observation_space: spaces.Space,
+) -> Union[Tuple[int, ...], Dict[str, Tuple[int, ...]]]:
+    """
+    Get the shape of the observation (useful for the buffers).
+
+    :param observation_space:
+    :return:
+    """
+    if isinstance(observation_space, spaces.Box):
+        return observation_space.shape
+    elif isinstance(observation_space, spaces.Discrete):
+        # Observation is an int
+        return (1,)
+    elif isinstance(observation_space, spaces.MultiDiscrete):
+        # Number of discrete features
+        return (int(len(observation_space.nvec)),)
+    elif isinstance(observation_space, spaces.MultiBinary):
+        # Number of binary features
+        return observation_space.shape
+    elif isinstance(observation_space, spaces.Dict):
+        return {key: get_obs_shape(subspace) for (key, subspace) in observation_space.spaces.items()}  # type: ignore[misc]
+
+    else:
+        raise NotImplementedError(
+            f"{observation_space} observation space is not supported"
+        )
+
+
+def get_action_dim(action_space: spaces.Space) -> int:
+    """
+    Get the dimension of the action space.
+
+    :param action_space:
+    :return:
+    """
+    if isinstance(action_space, spaces.Box):
+        return int(np.prod(action_space.shape))
+    elif isinstance(action_space, spaces.Discrete):
+        # Action is an int
+        return 1
+    elif isinstance(action_space, spaces.MultiDiscrete):
+        # Number of discrete actions
+        return int(len(action_space.nvec))
+    elif isinstance(action_space, spaces.MultiBinary):
+        # Number of binary actions
+        assert isinstance(
+            action_space.n, int
+        ), "Multi-dimensional MultiBinary action space is not supported. You can flatten it instead."
+        return int(action_space.n)
+    else:
+        raise NotImplementedError(f"{action_space} action space is not supported")
+
+
+class HerReplayBufferCorneTest:
     """
     Hindsight Experience Replay (HER) buffer.
     Paper: https://arxiv.org/abs/1707.01495
@@ -75,9 +129,65 @@ class HerReplayBufferCorneTest(ReplayBuffer):
             handle_timeout_termination=handle_timeout_termination,
         )
         """
+
+        #### INIT of BASE BUFFER ####
+
+        self.buffer_size = buffer_size
+        self.observation_space = observation_space
+        self.action_space = action_space
+        self.obs_shape = get_obs_shape(observation_space)
+
+        self.action_dim = get_action_dim(action_space)
+        self.pos = 0
+        self.full = False
+        self.device = device  # get_device(device)
+        self.n_envs = n_envs
+
+        ##### INIT of REPLAY BUFFER #########
+        """
+        super().__init__(
+            buffer_size, observation_space, action_space, device, n_envs=n_envs
+        )
+        """
+
+        """
+        # Adjust buffer size
+        self.buffer_size = max(buffer_size // n_envs, 1)
+
+        self.observations = np.zeros(
+            (self.buffer_size, self.n_envs, *self.obs_shape),
+            dtype=observation_space.dtype,
+        )
+        """
+
+        """
+        if optimize_memory_usage:
+            # `observations` contains also the next observation
+            self.next_observations = None
+        else:
+            self.next_observations = np.zeros(
+                (self.buffer_size, self.n_envs, *self.obs_shape),
+                dtype=observation_space.dtype,
+            )
+        """
+
+        # self.actions = np.zeros(
+        #    (self.buffer_size, self.n_envs, self.action_dim), dtype=action_space.dtype
+        # )
+
+        # self.rewards = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
+        # self.dones = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
+        # Handle timeouts termination properly if needed
+        # see https://github.com/DLR-RM/stable-baselines3/issues/284
+        # self.handle_timeout_termination = handle_timeout_termination
+        # self.timeouts = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
+        #################
+
+        """
         super(ReplayBuffer, self).__init__(
             buffer_size, observation_space, action_space, device, n_envs=n_envs
         )
+        """
 
         #### INIT OF DICTREPLAYBUFFER ####
         assert isinstance(
@@ -145,6 +255,46 @@ class HerReplayBufferCorneTest(ReplayBuffer):
         self.ep_start = np.zeros((self.buffer_size, self.n_envs), dtype=np.int64)
         self.ep_length = np.zeros((self.buffer_size, self.n_envs), dtype=np.int64)
         self._current_ep_start = np.zeros(self.n_envs, dtype=np.int64)
+
+    ### Normalize from BASE BUFFER ###
+
+    def size(self) -> int:
+        """
+        :return: The current size of the buffer
+        """
+        if self.full:
+            return self.buffer_size
+        return self.pos
+
+    def to_torch(self, array: np.ndarray, copy: bool = True) -> th.Tensor:
+        """
+        Convert a numpy array to a PyTorch tensor.
+        Note: it copies the data by default
+
+        :param array:
+        :param copy: Whether to copy or not the data (may be useful to avoid changing things
+            by reference). This argument is inoperative if the device is not the CPU.
+        :return:
+        """
+        if copy:
+            return th.tensor(array, device=self.device)
+        return th.as_tensor(array, device=self.device)
+
+    def _normalize_obs(
+        self,
+        obs: Union[np.ndarray, Dict[str, np.ndarray]],
+        env: Optional[VecNormalize] = None,
+    ) -> Union[np.ndarray, Dict[str, np.ndarray]]:
+        if env is not None:
+            return env.normalize_obs(obs)
+        return obs
+
+    def _normalize_reward(
+        self, reward: np.ndarray, env: Optional[VecNormalize] = None
+    ) -> np.ndarray:
+        if env is not None:
+            return env.normalize_reward(reward).astype(np.float32)
+        return reward
 
     ### ADD from DICTREPLAYBUFFER ###
     def add_drp(
