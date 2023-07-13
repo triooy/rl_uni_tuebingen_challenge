@@ -20,7 +20,7 @@ def compute_reward_distance(achieved_goal, desired_goal, info):
     return distance
 
 
-class HerReplayBufferCorneTest:
+class CustomHerReplayBuffer:
     """
     :param buffer_size: Buffer size
     :param observation_space: Observation space

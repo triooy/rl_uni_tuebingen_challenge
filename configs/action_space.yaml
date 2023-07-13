@@ -1,0 +1,33 @@
+action_space:
+  n_eval_episodes: 100
+  n_eval_envs: 1
+  render_mode: human
+  device: cpu
+  discrete_action_space: false
+  model_vs_model: false
+  weak_opponent: true
+  start_method: "spawn"
+  models:
+    [
+      "../best_agents/best_old",
+      "../best_agents/best_old",
+      "../best_agents/td3_corne",
+      "../best_agents/td3_corne",
+      "../best_agents/td3_corne",
+      "../best_agents/best_old",
+      "../best_agents/best_old",
+      "../best_agents/td3_corne",
+    ]
+  opponents:
+    [
+      "weak",
+      "strong",
+      "weak",
+      "strong",
+      "../best_agents/best_old",
+      "../best_agents/td3_corne",
+      "../best_agents/best_old",
+      "../best_agents/td3_corne",
+    ]
+  save_location: "../actionspace"
+  render: false

@@ -19,7 +19,7 @@ from src.utils.custom_policy import ResidualPolicy
 from src.gsde.gsde_policy import PPO_gSDE_MlpPolicy
 import logging
 
-from HER.HER import CustomHerReplayBuffer
+from src.HER.HER import CustomHerReplayBuffer
 
 logger = logging.getLogger(__name__)
 
