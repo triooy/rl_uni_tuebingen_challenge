@@ -18,6 +18,30 @@ from stable_baselines3.common.type_aliases import DictReplayBufferSamples, Tenso
 from src.HER.DICT import BaseBuffer
 from src.HER.utils import get_action_dim, get_obs_shape
 
+# from src.utils.wrapper import compute_reward
+
+
+def compute_reward(achieved_goal, desired_goal, info):
+    """
+    r = 0
+    winner = self.info["winner"]
+    if self.done:
+        if self.winner == 0:  # tie
+            r += 0
+        elif self.winner == 1:  # you won
+            r += 10
+        else:  # opponent won
+            r -= 10
+    a = achieved_goal - desired_goal
+    # return a[:91]
+    # return np.array([r], np.float32)
+    p = 0.5
+    """
+    rew = np.array([5 * info[i]["winner"] for i in range(achieved_goal.shape[0])])
+    # return -np.power(np.dot(np.abs(achieved_goal - desired_goal), 0.5), p)
+    # return np.zeros(achieved_goal.shape[0])
+    return rew
+
 
 class HerReplayBufferCorneTest:
     """
@@ -79,8 +103,8 @@ class HerReplayBufferCorneTest:
         self.obs_shape = get_obs_shape(observation_space)
 
         self.action_dim = get_action_dim(action_space)
-        self.pos = 0
-        self.full = False
+        self.position = 0
+        self.buffer_full = False
         self.device = device  # get_device(device)
         self.n_envs = n_envs
 
@@ -88,7 +112,8 @@ class HerReplayBufferCorneTest:
         assert isinstance(
             self.obs_shape, dict
         ), "DictReplayBuffer must be used with Dict obs space only"
-        self.buffer_size = max(buffer_size // n_envs, 1)
+        self.buffer_size = buffer_size // n_envs
+        self.buffer_size = max(self.buffer_size, 1)
 
         self.observations = {
             key: np.zeros(
@@ -97,7 +122,7 @@ class HerReplayBufferCorneTest:
             )
             for key, _obs_shape in self.obs_shape.items()
         }
-        self.next_observations = {
+        self.future_observation = {
             key: np.zeros(
                 (self.buffer_size, self.n_envs, *_obs_shape),
                 dtype=observation_space[key].dtype,
@@ -134,8 +159,8 @@ class HerReplayBufferCorneTest:
         # when an episode starts and ends.
         # We use the following arrays to store the indices,
         # and update them when an episode ends.
-        self.ep_start = np.zeros((self.buffer_size, self.n_envs), dtype=np.int64)
-        self.ep_length = np.zeros((self.buffer_size, self.n_envs), dtype=np.int64)
+        self.episode_start = np.zeros((self.buffer_size, self.n_envs), dtype=np.int64)
+        self.episode_length = np.zeros((self.buffer_size, self.n_envs), dtype=np.int64)
         self._current_ep_start = np.zeros(self.n_envs, dtype=np.int64)
 
     ### Normalize from BASE BUFFER ###
@@ -144,9 +169,9 @@ class HerReplayBufferCorneTest:
         """
         :return: The current size of the buffer
         """
-        if self.full:
+        if self.buffer_full:
             return self.buffer_size
-        return self.pos
+        return self.position
 
     def to_torch(self, array, copy: bool = True) -> th.Tensor:
         """
@@ -187,35 +212,35 @@ class HerReplayBufferCorneTest:
             # as numpy cannot broadcast (n_discrete,) to (n_discrete, 1)
             # if isinstance(self.observation_space.spaces[key], spaces.Discrete):
             obs[key] = obs[key].reshape((self.n_envs,) + self.obs_shape[key])
-            # self.observations[key][self.pos] = np.array(obs[key])
+            # self.observations[key][self.position] = np.array(obs[key])
 
-        for key in self.next_observations.keys():
+        for key in self.future_observation.keys():
             """
             if isinstance(self.observation_space.spaces[key], spaces.Discrete):
                 next_obs[key] = next_obs[key].reshape(
                     (self.n_envs,) + self.obs_shape[key]
                 )
             """
-            self.next_observations[key][self.pos] = np.array(next_obs[key]).copy()
+            self.future_observation[key][self.position] = np.array(next_obs[key]).copy()
 
         # Reshape to handle multi-dim and discrete action spaces, see GH #970 #1392
         action = action.reshape((self.n_envs, self.action_dim))
 
-        self.actions[self.pos] = np.array(action).copy()
-        self.rewards[self.pos] = np.array(reward).copy()
-        self.dones[self.pos] = np.array(done).copy()
+        self.actions[self.position] = np.array(action).copy()
+        self.rewards[self.position] = np.array(reward).copy()
+        self.dones[self.position] = np.array(done).copy()
 
         """
         if self.handle_timeout_termination:
-            self.timeouts[self.pos] = np.array(
+            self.timeouts[self.position] = np.array(
                 [info.get("TimeLimit.truncated", False) for info in infos]
             )
         """
 
-        self.pos += 1
-        if self.pos == self.buffer_size:
-            self.full = True
-            self.pos = 0
+        self.position += 1
+        if self.position == self.buffer_size:
+            self.buffer_full = True
+            self.position = 0
 
     def add(
         self,
@@ -231,17 +256,19 @@ class HerReplayBufferCorneTest:
         # (and not only the transition on which we rewrite). To do this, we set
         # the length of the old episode to 0, so it can't be sampled anymore.
         for env_idx in range(self.n_envs):
-            episode_start = self.ep_start[self.pos, env_idx]
-            episode_length = self.ep_length[self.pos, env_idx]
+            episode_start = self.episode_start[self.position, env_idx]
+            episode_length = self.episode_length[self.position, env_idx]
             if episode_length > 0:
                 episode_end = episode_start + episode_length
-                episode_indices = np.arange(self.pos, episode_end) % self.buffer_size
-                self.ep_length[episode_indices, env_idx] = 0
+                episode_indices = (
+                    np.arange(self.position, episode_end) % self.buffer_size
+                )
+                self.episode_length[episode_indices, env_idx] = 0
 
         # Update episode start
-        self.ep_start[self.pos] = self._current_ep_start.copy()
+        self.episode_start[self.position] = self._current_ep_start.copy()
 
-        self.infos[self.pos] = infos
+        self.infos[self.position] = infos
         # Store the transition
         # super().add(obs, next_obs, action, reward, done, infos)
         # NEW
@@ -257,13 +284,13 @@ class HerReplayBufferCorneTest:
         Compute and store the episode length for environment with index env_idx
         """
         episode_start = self._current_ep_start[env_idx]
-        episode_end = self.pos
+        episode_end = self.position
         if episode_end < episode_start:
             # Reset Buffer when full
             episode_end += self.buffer_size
         episode_indices = np.arange(episode_start, episode_end) % self.buffer_size
-        self._current_ep_start[env_idx] = self.pos
-        self.ep_length[episode_indices, env_idx] = episode_end - episode_start
+        self._current_ep_start[env_idx] = self.position
+        self.episode_length[episode_indices, env_idx] = episode_end - episode_start
 
     def sample(self, batch_size: int, env=None) -> DictReplayBufferSamples:
         """
@@ -275,7 +302,7 @@ class HerReplayBufferCorneTest:
         """
         # When the buffer is full, we rewrite on old episodes. We don't want to
         # sample incomplete episode transitions, so we have to eliminate some indexes.
-        is_valid = self.ep_length > 0
+        is_valid = self.episode_length > 0
         if not np.any(is_valid):
             raise RuntimeError(
                 "Unable to sample before the end of the first episode. We recommend choosing a value "
@@ -359,7 +386,7 @@ class HerReplayBufferCorneTest:
         next_obs_ = self._normalize_obs(
             {
                 key: obs[batch_indices, env_indices, :]
-                for key, obs in self.next_observations.items()
+                for key, obs in self.future_observation.items()
             },
             env,
         )
@@ -407,7 +434,7 @@ class HerReplayBufferCorneTest:
         }
         next_obs = {
             key: obs[batch_indices, env_indices, :]
-            for key, obs in self.next_observations.items()
+            for key, obs in self.future_observation.items()
         }
 
         # The copy may cause a slow down
@@ -420,6 +447,8 @@ class HerReplayBufferCorneTest:
         next_obs["desired_goal"] = new_goals
 
         # Compute new reward
+        # Use vectorized compute reward function. See in wrapper.
+        """
         rewards = self.env.env_method(
             "compute_reward",
             # the new state depends on the previous state and action
@@ -435,9 +464,12 @@ class HerReplayBufferCorneTest:
             # we use the method of the first environment assuming that all environments are identical.
             indices=[0],
         )
-        rewards = rewards[0].astype(
-            np.float32
-        )  # env_method returns a list containing one element
+        """
+
+        rewards = compute_reward(next_obs["achieved_goal"], obs["desired_goal"], infos)
+        # rewards = rewards[0].astype(
+        #    np.float32
+        # )  # env_method returns a list containing one element
         obs = self._normalize_obs(obs, env)
         next_obs = self._normalize_obs(next_obs, env)
 
@@ -467,43 +499,40 @@ class HerReplayBufferCorneTest:
         :param env_indices: Indices of the envrionments
         :return: Sampled goals
         """
-        batch_ep_start = self.ep_start[batch_indices, env_indices]
-        batch_ep_length = self.ep_length[batch_indices, env_indices]
+        batch_episode_start = self.episode_start[batch_indices, env_indices]
+        batch_episode_length = self.episode_length[batch_indices, env_indices]
 
         # select sample with future goal selection strate
-        current_indices_in_episode = (batch_indices - batch_ep_start) % self.buffer_size
+        current_indices_in_episode = (
+            batch_indices - batch_episode_start
+        ) % self.buffer_size
         transition_indices_in_episode = np.random.randint(
-            current_indices_in_episode, batch_ep_length
+            current_indices_in_episode, batch_episode_length
         )
         transition_indices = (
-            transition_indices_in_episode + batch_ep_start
+            transition_indices_in_episode + batch_episode_start
         ) % self.buffer_size
-        return self.next_observations["achieved_goal"][transition_indices, env_indices]
+        return self.future_observation["achieved_goal"][transition_indices, env_indices]
 
+    """
     def truncate_last_trajectory(self) -> None:
-        """
-        If called, we assume that the last trajectory in the replay buffer was finished
-        (and truncate it).
-        If not called, we assume that we continue the same trajectory (same episode).
-        """
         # If we are at the start of an episode, no need to truncate
-        if (self._current_ep_start != self.pos).any():
+        if (self._current_ep_start != self.position).any():
             warnings.warn(
                 "The last trajectory in the replay buffer will be truncated.\n"
                 "If you are in the same episode as when the replay buffer was saved,\n"
                 "you should use `truncate_last_trajectory=False` to avoid that issue."
             )
             # only consider epsiodes that are not finished
-            for env_idx in np.where(self._current_ep_start != self.pos)[0]:
+            for env_idx in np.where(self._current_ep_start != self.position)[0]:
                 # set done = True for last episodes
-                self.dones[self.pos - 1, env_idx] = True
+                self.dones[self.position - 1, env_idx] = True
                 # make sure that last episodes can be sampled and
                 # update next episode start (self._current_ep_start)
                 self.get_episode_length(env_idx)
                 # handle infinite horizon tasks
-                """
                 if self.handle_timeout_termination:
                     self.timeouts[
-                        self.pos - 1, env_idx
+                        self.position - 1, env_idx
                     ] = True  # not an actual timeout, but it allows bootstrapping
                 """
