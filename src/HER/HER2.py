@@ -8,80 +8,20 @@ from gymnasium import spaces
 
 # from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.type_aliases import DictReplayBufferSamples, TensorDict
-from stable_baselines3.common.vec_env import VecEnv, VecNormalize
-from stable_baselines3.her.goal_selection_strategy import (
+
+# from stable_baselines3.common.vec_env import VecEnv, VecNormalize
+"""from stable_baselines3.her.goal_selection_strategy import (
     KEY_TO_GOAL_STRATEGY,
     GoalSelectionStrategy,
-)
+)"""
 
 from src.HER.DICT import BaseBuffer
-
-
-def get_obs_shape(
-    observation_space: spaces.Space,
-) -> Union[Tuple[int, ...], Dict[str, Tuple[int, ...]]]:
-    """
-    Get the shape of the observation (useful for the buffers).
-
-    :param observation_space:
-    :return:
-    """
-    if isinstance(observation_space, spaces.Box):
-        return observation_space.shape
-    elif isinstance(observation_space, spaces.Discrete):
-        # Observation is an int
-        return (1,)
-    elif isinstance(observation_space, spaces.MultiDiscrete):
-        # Number of discrete features
-        return (int(len(observation_space.nvec)),)
-    elif isinstance(observation_space, spaces.MultiBinary):
-        # Number of binary features
-        return observation_space.shape
-    elif isinstance(observation_space, spaces.Dict):
-        return {key: get_obs_shape(subspace) for (key, subspace) in observation_space.spaces.items()}  # type: ignore[misc]
-
-    else:
-        raise NotImplementedError(
-            f"{observation_space} observation space is not supported"
-        )
-
-
-def get_action_dim(action_space: spaces.Space) -> int:
-    """
-    Get the dimension of the action space.
-
-    :param action_space:
-    :return:
-    """
-    if isinstance(action_space, spaces.Box):
-        return int(np.prod(action_space.shape))
-    elif isinstance(action_space, spaces.Discrete):
-        # Action is an int
-        return 1
-    elif isinstance(action_space, spaces.MultiDiscrete):
-        # Number of discrete actions
-        return int(len(action_space.nvec))
-    elif isinstance(action_space, spaces.MultiBinary):
-        # Number of binary actions
-        assert isinstance(
-            action_space.n, int
-        ), "Multi-dimensional MultiBinary action space is not supported. You can flatten it instead."
-        return int(action_space.n)
-    else:
-        raise NotImplementedError(f"{action_space} action space is not supported")
+from src.HER.utils import get_action_dim, get_obs_shape
 
 
 class HerReplayBufferCorneTest:
     """
-    Hindsight Experience Replay (HER) buffer.
-    Paper: https://arxiv.org/abs/1707.01495
 
-    Replay buffer for sampling HER (Hindsight Experience Replay) transitions.
-
-    .. note::
-
-      Compared to other implementations, the ``future`` goal sampling strategy is inclusive:
-      the current transition can be used when re-sampling.
 
     :param buffer_size: Max number of element in the buffer
     :param observation_space: Observation space
@@ -109,14 +49,15 @@ class HerReplayBufferCorneTest:
         buffer_size: int,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        env: VecEnv,
+        env,  # VecEnv,
         device: Union[th.device, str] = "auto",
         n_envs: int = 1,
         optimize_memory_usage: bool = False,
-        handle_timeout_termination: bool = True,
-        n_sampled_goal: int = 4,
-        goal_selection_strategy: Union[GoalSelectionStrategy, str] = "future",
-        copy_info_dict: bool = True,
+        # handle_timeout_termination: bool = True,
+        # n_sampled_goal: int = 4,
+        her_ratio=0.75,
+        # goal_selection_strategy = "future",
+        # copy_info_dict: bool = True,
     ):
         """
         super().__init__(
@@ -142,52 +83,6 @@ class HerReplayBufferCorneTest:
         self.full = False
         self.device = device  # get_device(device)
         self.n_envs = n_envs
-
-        ##### INIT of REPLAY BUFFER #########
-        """
-        super().__init__(
-            buffer_size, observation_space, action_space, device, n_envs=n_envs
-        )
-        """
-
-        """
-        # Adjust buffer size
-        self.buffer_size = max(buffer_size // n_envs, 1)
-
-        self.observations = np.zeros(
-            (self.buffer_size, self.n_envs, *self.obs_shape),
-            dtype=observation_space.dtype,
-        )
-        """
-
-        """
-        if optimize_memory_usage:
-            # `observations` contains also the next observation
-            self.next_observations = None
-        else:
-            self.next_observations = np.zeros(
-                (self.buffer_size, self.n_envs, *self.obs_shape),
-                dtype=observation_space.dtype,
-            )
-        """
-
-        # self.actions = np.zeros(
-        #    (self.buffer_size, self.n_envs, self.action_dim), dtype=action_space.dtype
-        # )
-
-        # self.rewards = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
-        # self.dones = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
-        # Handle timeouts termination properly if needed
-        # see https://github.com/DLR-RM/stable-baselines3/issues/284
-        # self.handle_timeout_termination = handle_timeout_termination
-        # self.timeouts = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
-        #################
-
-        """
-        super(ReplayBuffer, self).__init__(
-            buffer_size, observation_space, action_space, device, n_envs=n_envs
-        )
-        """
 
         #### INIT OF DICTREPLAYBUFFER ####
         assert isinstance(
@@ -218,32 +113,19 @@ class HerReplayBufferCorneTest:
 
         # Handle timeouts termination properly if needed
         # see https://github.com/DLR-RM/stable-baselines3/issues/284
-        self.handle_timeout_termination = handle_timeout_termination
+        # self.handle_timeout_termination = handle_timeout_termination
         self.timeouts = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
 
         ##############
 
         self.env = env
-        self.copy_info_dict = copy_info_dict
-        assert copy_info_dict == True
 
-        # convert goal_selection_strategy into GoalSelectionStrategy if string
-        if isinstance(goal_selection_strategy, str):
-            self.goal_selection_strategy = KEY_TO_GOAL_STRATEGY[
-                goal_selection_strategy.lower()
-            ]
-        else:
-            self.goal_selection_strategy = goal_selection_strategy
-
-        # check if goal_selection_strategy is valid
-        assert isinstance(
-            self.goal_selection_strategy, GoalSelectionStrategy
-        ), f"Invalid goal selection strategy, please use one of {list(GoalSelectionStrategy)}"
-
-        self.n_sampled_goal = n_sampled_goal
+        # self.goal_selection_strategy = goal_selection_strategy
+        # self.n_sampled_goal = n_sampled_goal
+        self.her_ratio = her_ratio
 
         # Compute ratio between HER replays and regular replays in percent
-        self.her_ratio = 1 - (1.0 / (self.n_sampled_goal + 1))
+        # self.her_ratio = 1 - (1.0 / (self.n_sampled_goal + 1))
         # In some environments, the info dict is used to compute the reward. Then, we need to store it.
         self.infos = np.array(
             [[{} for _ in range(self.n_envs)] for _ in range(self.buffer_size)]
@@ -266,7 +148,7 @@ class HerReplayBufferCorneTest:
             return self.buffer_size
         return self.pos
 
-    def to_torch(self, array: np.ndarray, copy: bool = True) -> th.Tensor:
+    def to_torch(self, array, copy: bool = True) -> th.Tensor:
         """
         Convert a numpy array to a PyTorch tensor.
         Note: it copies the data by default
@@ -280,18 +162,12 @@ class HerReplayBufferCorneTest:
             return th.tensor(array, device=self.device)
         return th.as_tensor(array, device=self.device)
 
-    def _normalize_obs(
-        self,
-        obs: Union[np.ndarray, Dict[str, np.ndarray]],
-        env: Optional[VecNormalize] = None,
-    ) -> Union[np.ndarray, Dict[str, np.ndarray]]:
+    def _normalize_obs(self, obs, env):
         if env is not None:
             return env.normalize_obs(obs)
         return obs
 
-    def _normalize_reward(
-        self, reward: np.ndarray, env: Optional[VecNormalize] = None
-    ) -> np.ndarray:
+    def _normalize_reward(self, reward, env=None):
         if env is not None:
             return env.normalize_reward(reward).astype(np.float32)
         return reward
@@ -299,27 +175,27 @@ class HerReplayBufferCorneTest:
     ### ADD from DICTREPLAYBUFFER ###
     def add_drp(
         self,
-        obs: Dict[str, np.ndarray],
-        next_obs: Dict[str, np.ndarray],
-        action: np.ndarray,
-        reward: np.ndarray,
-        done: np.ndarray,
-        infos: List[Dict[str, Any]],
-    ) -> None:
-        # pytype: disable=signature-mismatch
-        # Copy to avoid modification by reference
+        obs,
+        next_obs,
+        action,
+        reward,
+        done,
+        infos,
+    ):
         for key in self.observations.keys():
             # Reshape needed when using multiple envs with discrete observations
             # as numpy cannot broadcast (n_discrete,) to (n_discrete, 1)
-            if isinstance(self.observation_space.spaces[key], spaces.Discrete):
-                obs[key] = obs[key].reshape((self.n_envs,) + self.obs_shape[key])
-            self.observations[key][self.pos] = np.array(obs[key])
+            # if isinstance(self.observation_space.spaces[key], spaces.Discrete):
+            obs[key] = obs[key].reshape((self.n_envs,) + self.obs_shape[key])
+            # self.observations[key][self.pos] = np.array(obs[key])
 
         for key in self.next_observations.keys():
+            """
             if isinstance(self.observation_space.spaces[key], spaces.Discrete):
                 next_obs[key] = next_obs[key].reshape(
                     (self.n_envs,) + self.obs_shape[key]
                 )
+            """
             self.next_observations[key][self.pos] = np.array(next_obs[key]).copy()
 
         # Reshape to handle multi-dim and discrete action spaces, see GH #970 #1392
@@ -329,51 +205,27 @@ class HerReplayBufferCorneTest:
         self.rewards[self.pos] = np.array(reward).copy()
         self.dones[self.pos] = np.array(done).copy()
 
+        """
         if self.handle_timeout_termination:
             self.timeouts[self.pos] = np.array(
                 [info.get("TimeLimit.truncated", False) for info in infos]
             )
+        """
 
         self.pos += 1
         if self.pos == self.buffer_size:
             self.full = True
             self.pos = 0
 
-    """
-    def __getstate__(self) -> Dict[str, Any]:
-        state = self.__dict__.copy()
-        # these attributes are not pickleable
-        del state["env"]
-        return state
-    """
-
-    """
-    def __setstate__(self, state: Dict[str, Any]) -> None:
-        self.__dict__.update(state)
-        assert "env" not in state
-        self.env = None
-    """
-
-    def set_env(self, env: VecEnv) -> None:
-        """
-        Sets the environment.
-
-        :param env:
-        """
-        if self.env is not None:
-            raise ValueError("Trying to set env of already initialized environment.")
-
-        self.env = env
-
     def add(
         self,
-        obs: TensorDict,
-        next_obs: TensorDict,
-        action: np.ndarray,
-        reward: np.ndarray,
-        done: np.ndarray,
-        infos: List[Dict[str, Any]],
-    ) -> None:
+        obs,
+        next_obs,
+        action,
+        reward,
+        done,
+        infos,
+    ):
         # When the buffer is full, we rewrite on old episodes. When we start to
         # rewrite on an old episodes, we want the whole old episode to be deleted
         # (and not only the transition on which we rewrite). To do this, we set
@@ -389,8 +241,7 @@ class HerReplayBufferCorneTest:
         # Update episode start
         self.ep_start[self.pos] = self._current_ep_start.copy()
 
-        if self.copy_info_dict:
-            self.infos[self.pos] = infos
+        self.infos[self.pos] = infos
         # Store the transition
         # super().add(obs, next_obs, action, reward, done, infos)
         # NEW
@@ -399,28 +250,22 @@ class HerReplayBufferCorneTest:
         # When episode ends, compute and store the episode length
         for env_idx in range(self.n_envs):
             if done[env_idx]:
-                self._compute_episode_length(env_idx)
+                self.get_episode_length(env_idx)
 
-    def _compute_episode_length(self, env_idx: int) -> None:
+    def get_episode_length(self, env_idx):
         """
         Compute and store the episode length for environment with index env_idx
-
-        :param env_idx: index of the environment for which the episode length should be computed
         """
         episode_start = self._current_ep_start[env_idx]
         episode_end = self.pos
         if episode_end < episode_start:
-            # Occurs when the buffer becomes full, the storage resumes at the
-            # beginning of the buffer. This can happen in the middle of an episode.
+            # Reset Buffer when full
             episode_end += self.buffer_size
         episode_indices = np.arange(episode_start, episode_end) % self.buffer_size
-        self.ep_length[episode_indices, env_idx] = episode_end - episode_start
-        # Update the current episode start
         self._current_ep_start[env_idx] = self.pos
+        self.ep_length[episode_indices, env_idx] = episode_end - episode_start
 
-    def sample(
-        self, batch_size: int, env: Optional[VecNormalize] = None
-    ) -> DictReplayBufferSamples:
+    def sample(self, batch_size: int, env=None) -> DictReplayBufferSamples:
         """
         Sample elements from the replay buffer.
 
@@ -492,7 +337,7 @@ class HerReplayBufferCorneTest:
         self,
         batch_indices: np.ndarray,
         env_indices: np.ndarray,
-        env: Optional[VecNormalize] = None,
+        env=None,
     ) -> DictReplayBufferSamples:
         """
         Get the samples corresponding to the batch and environment indices.
@@ -544,7 +389,7 @@ class HerReplayBufferCorneTest:
         self,
         batch_indices: np.ndarray,
         env_indices: np.ndarray,
-        env: Optional[VecNormalize] = None,
+        env=None,
     ) -> DictReplayBufferSamples:
         """
         Get the samples, sample new desired goals and compute new rewards.
@@ -564,11 +409,10 @@ class HerReplayBufferCorneTest:
             key: obs[batch_indices, env_indices, :]
             for key, obs in self.next_observations.items()
         }
-        if self.copy_info_dict:
-            # The copy may cause a slow down
-            infos = copy.deepcopy(self.infos[batch_indices, env_indices])
-        else:
-            infos = [{} for _ in range(len(batch_indices))]
+
+        # The copy may cause a slow down
+        infos = copy.deepcopy(self.infos[batch_indices, env_indices])
+
         # Sample and set new goals
         new_goals = self._sample_goals(batch_indices, env_indices)
         obs["desired_goal"] = new_goals
@@ -618,7 +462,6 @@ class HerReplayBufferCorneTest:
         self, batch_indices: np.ndarray, env_indices: np.ndarray
     ) -> np.ndarray:
         """
-        Sample goals based on goal_selection_strategy.
 
         :param batch_indices: Indices of the transitions
         :param env_indices: Indices of the envrionments
@@ -627,29 +470,11 @@ class HerReplayBufferCorneTest:
         batch_ep_start = self.ep_start[batch_indices, env_indices]
         batch_ep_length = self.ep_length[batch_indices, env_indices]
 
-        if self.goal_selection_strategy == GoalSelectionStrategy.FINAL:
-            # Replay with final state of current episode
-            transition_indices_in_episode = batch_ep_length - 1
-
-        elif self.goal_selection_strategy == GoalSelectionStrategy.FUTURE:
-            # Replay with random state which comes from the same episode and was observed after current transition
-            # Note: our implementation is inclusive: current transition can be sampled
-            current_indices_in_episode = (
-                batch_indices - batch_ep_start
-            ) % self.buffer_size
-            transition_indices_in_episode = np.random.randint(
-                current_indices_in_episode, batch_ep_length
-            )
-
-        elif self.goal_selection_strategy == GoalSelectionStrategy.EPISODE:
-            # Replay with random state which comes from the same episode as current transition
-            transition_indices_in_episode = np.random.randint(0, batch_ep_length)
-
-        else:
-            raise ValueError(
-                f"Strategy {self.goal_selection_strategy} for sampling goals not supported!"
-            )
-
+        # select sample with future goal selection strate
+        current_indices_in_episode = (batch_indices - batch_ep_start) % self.buffer_size
+        transition_indices_in_episode = np.random.randint(
+            current_indices_in_episode, batch_ep_length
+        )
         transition_indices = (
             transition_indices_in_episode + batch_ep_start
         ) % self.buffer_size
@@ -674,9 +499,11 @@ class HerReplayBufferCorneTest:
                 self.dones[self.pos - 1, env_idx] = True
                 # make sure that last episodes can be sampled and
                 # update next episode start (self._current_ep_start)
-                self._compute_episode_length(env_idx)
+                self.get_episode_length(env_idx)
                 # handle infinite horizon tasks
+                """
                 if self.handle_timeout_termination:
                     self.timeouts[
                         self.pos - 1, env_idx
                     ] = True  # not an actual timeout, but it allows bootstrapping
+                """
