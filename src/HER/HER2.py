@@ -1,42 +1,13 @@
 import copy
-import warnings
-from typing import Any, Dict, List, Optional, Union, Tuple
-
 import numpy as np
 import torch as th
 from gymnasium import spaces
 
-# from stable_baselines3.common.buffers import ReplayBuffer
-from stable_baselines3.common.type_aliases import DictReplayBufferSamples, TensorDict
-
-# from stable_baselines3.common.vec_env import VecEnv, VecNormalize
-"""from stable_baselines3.her.goal_selection_strategy import (
-    KEY_TO_GOAL_STRATEGY,
-    GoalSelectionStrategy,
-)"""
-
-from src.HER.DICT import BaseBuffer
+from stable_baselines3.common.type_aliases import DictReplayBufferSamples
 from src.HER.utils import get_action_dim, get_obs_shape
-
-# from src.utils.wrapper import compute_reward
 
 
 def compute_reward(achieved_goal, desired_goal, info):
-    """
-    r = 0
-    winner = self.info["winner"]
-    if self.done:
-        if self.winner == 0:  # tie
-            r += 0
-        elif self.winner == 1:  # you won
-            r += 10
-        else:  # opponent won
-            r -= 10
-    a = achieved_goal - desired_goal
-    # return a[:91]
-    # return np.array([r], np.float32)
-    p = 0.5
-    """
     rew = np.array([5 * info[i]["winner"] for i in range(achieved_goal.shape[0])])
     # return -np.power(np.dot(np.abs(achieved_goal - desired_goal), 0.5), p)
     # return np.zeros(achieved_goal.shape[0])
@@ -45,27 +16,14 @@ def compute_reward(achieved_goal, desired_goal, info):
 
 class HerReplayBufferCorneTest:
     """
-
-
-    :param buffer_size: Max number of element in the buffer
+    :param buffer_size: Buffer size
     :param observation_space: Observation space
     :param action_space: Action space
-    :param env: The training environment
-    :param device: PyTorch device
+    :param env: Training environment
+    :param device: Devcie for Pytorch
     :param n_envs: Number of parallel environments
-    :param optimize_memory_usage: Enable a memory efficient variant
-        Disabled for now (see https://github.com/DLR-RM/stable-baselines3/pull/243#discussion_r531535702)
-    :param handle_timeout_termination: Handle timeout termination (due to timelimit)
-        separately and treat the task as infinite horizon task.
-        https://github.com/DLR-RM/stable-baselines3/issues/284
-    :param n_sampled_goal: Number of virtual transitions to create per real transition,
-        by sampling new goals.
-    :param goal_selection_strategy: Strategy for sampling goals for replay.
-        One of ['episode', 'final', 'future']
-    :param copy_info_dict: Whether to copy the info dictionary and pass it to
-        ``compute_reward()`` method.
-        Please note that the copy may cause a slowdown.
-        False by default.
+    :param her_ratio: Ratio between HER replays and regular replays (between 0 and 1)
+    :param optimize_memory_usage: this param is only needed to not break stable baseline implementation of off policy algorithms
     """
 
     def __init__(
@@ -73,45 +31,26 @@ class HerReplayBufferCorneTest:
         buffer_size: int,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        env,  # VecEnv,
-        device: Union[th.device, str] = "auto",
-        n_envs: int = 1,
-        optimize_memory_usage: bool = False,
-        # handle_timeout_termination: bool = True,
-        # n_sampled_goal: int = 4,
+        env,
+        device="cpu",
+        n_envs=1,
         her_ratio=0.75,
-        # goal_selection_strategy = "future",
-        # copy_info_dict: bool = True,
+        optimize_memory_usage=False,
     ):
-        """
-        super().__init__(
-            buffer_size,
-            observation_space,
-            action_space,
-            device=device,
-            n_envs=n_envs,
-            optimize_memory_usage=optimize_memory_usage,
-            handle_timeout_termination=handle_timeout_termination,
-        )
-        """
-
-        #### INIT of BASE BUFFER ####
-
         self.buffer_size = buffer_size
         self.observation_space = observation_space
         self.action_space = action_space
         self.obs_shape = get_obs_shape(observation_space)
+        # Make sure we are in dict observation space
+        assert isinstance(
+            self.obs_shape, dict
+        ), "DictReplayBuffer must be used with Dict obs space only"
 
         self.action_dim = get_action_dim(action_space)
         self.position = 0
         self.buffer_full = False
-        self.device = device  # get_device(device)
+        self.device = device
         self.n_envs = n_envs
-
-        #### INIT OF DICTREPLAYBUFFER ####
-        assert isinstance(
-            self.obs_shape, dict
-        ), "DictReplayBuffer must be used with Dict obs space only"
         self.buffer_size = buffer_size // n_envs
         self.buffer_size = max(self.buffer_size, 1)
 
@@ -129,7 +68,6 @@ class HerReplayBufferCorneTest:
             )
             for key, _obs_shape in self.obs_shape.items()
         }
-
         self.actions = np.zeros(
             (self.buffer_size, self.n_envs, self.action_dim), dtype=action_space.dtype
         )
@@ -140,65 +78,21 @@ class HerReplayBufferCorneTest:
         # see https://github.com/DLR-RM/stable-baselines3/issues/284
         # self.handle_timeout_termination = handle_timeout_termination
         self.timeouts = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
-
-        ##############
-
+        self.infos = np.array(
+            [[{} for i in range(self.n_envs)] for j in range(self.buffer_size)]
+        )
         self.env = env
-
-        # self.goal_selection_strategy = goal_selection_strategy
-        # self.n_sampled_goal = n_sampled_goal
         self.her_ratio = her_ratio
 
-        # Compute ratio between HER replays and regular replays in percent
-        # self.her_ratio = 1 - (1.0 / (self.n_sampled_goal + 1))
-        # In some environments, the info dict is used to compute the reward. Then, we need to store it.
-        self.infos = np.array(
-            [[{} for _ in range(self.n_envs)] for _ in range(self.buffer_size)]
-        )
-        # To create virtual transitions, we need to know for each transition
-        # when an episode starts and ends.
-        # We use the following arrays to store the indices,
-        # and update them when an episode ends.
+        # save episode information in order to create correct virtual samples later
         self.episode_start = np.zeros((self.buffer_size, self.n_envs), dtype=np.int64)
         self.episode_length = np.zeros((self.buffer_size, self.n_envs), dtype=np.int64)
-        self._current_ep_start = np.zeros(self.n_envs, dtype=np.int64)
+        self.current_episode_start = np.zeros(self.n_envs, dtype=np.int64)
 
-    ### Normalize from BASE BUFFER ###
+    def to_torch(self, arr):
+        return th.tensor(arr, device=self.device)
 
-    def size(self) -> int:
-        """
-        :return: The current size of the buffer
-        """
-        if self.buffer_full:
-            return self.buffer_size
-        return self.position
-
-    def to_torch(self, array, copy: bool = True) -> th.Tensor:
-        """
-        Convert a numpy array to a PyTorch tensor.
-        Note: it copies the data by default
-
-        :param array:
-        :param copy: Whether to copy or not the data (may be useful to avoid changing things
-            by reference). This argument is inoperative if the device is not the CPU.
-        :return:
-        """
-        if copy:
-            return th.tensor(array, device=self.device)
-        return th.as_tensor(array, device=self.device)
-
-    def _normalize_obs(self, obs, env):
-        if env is not None:
-            return env.normalize_obs(obs)
-        return obs
-
-    def _normalize_reward(self, reward, env=None):
-        if env is not None:
-            return env.normalize_reward(reward).astype(np.float32)
-        return reward
-
-    ### ADD from DICTREPLAYBUFFER ###
-    def add_drp(
+    def add_helper(
         self,
         obs,
         next_obs,
@@ -208,19 +102,10 @@ class HerReplayBufferCorneTest:
         infos,
     ):
         for key in self.observations.keys():
-            # Reshape needed when using multiple envs with discrete observations
-            # as numpy cannot broadcast (n_discrete,) to (n_discrete, 1)
-            # if isinstance(self.observation_space.spaces[key], spaces.Discrete):
+            # Reshape for parallel environments
             obs[key] = obs[key].reshape((self.n_envs,) + self.obs_shape[key])
-            # self.observations[key][self.position] = np.array(obs[key])
 
         for key in self.future_observation.keys():
-            """
-            if isinstance(self.observation_space.spaces[key], spaces.Discrete):
-                next_obs[key] = next_obs[key].reshape(
-                    (self.n_envs,) + self.obs_shape[key]
-                )
-            """
             self.future_observation[key][self.position] = np.array(next_obs[key]).copy()
 
         # Reshape to handle multi-dim and discrete action spaces, see GH #970 #1392
@@ -229,13 +114,6 @@ class HerReplayBufferCorneTest:
         self.actions[self.position] = np.array(action).copy()
         self.rewards[self.position] = np.array(reward).copy()
         self.dones[self.position] = np.array(done).copy()
-
-        """
-        if self.handle_timeout_termination:
-            self.timeouts[self.position] = np.array(
-                [info.get("TimeLimit.truncated", False) for info in infos]
-            )
-        """
 
         self.position += 1
         if self.position == self.buffer_size:
@@ -266,13 +144,13 @@ class HerReplayBufferCorneTest:
                 self.episode_length[episode_indices, env_idx] = 0
 
         # Update episode start
-        self.episode_start[self.position] = self._current_ep_start.copy()
+        self.episode_start[self.position] = self.current_episode_start.copy()
 
         self.infos[self.position] = infos
         # Store the transition
         # super().add(obs, next_obs, action, reward, done, infos)
         # NEW
-        self.add_drp(obs, next_obs, action, reward, done, infos)
+        self.add_helper(obs, next_obs, action, reward, done, infos)
 
         # When episode ends, compute and store the episode length
         for env_idx in range(self.n_envs):
@@ -283,13 +161,13 @@ class HerReplayBufferCorneTest:
         """
         Compute and store the episode length for environment with index env_idx
         """
-        episode_start = self._current_ep_start[env_idx]
+        episode_start = self.current_episode_start[env_idx]
         episode_end = self.position
         if episode_end < episode_start:
             # Reset Buffer when full
             episode_end += self.buffer_size
         episode_indices = np.arange(episode_start, episode_end) % self.buffer_size
-        self._current_ep_start[env_idx] = self.position
+        self.current_episode_start[env_idx] = self.position
         self.episode_length[episode_indices, env_idx] = episode_end - episode_start
 
     def sample(self, batch_size: int, env=None) -> DictReplayBufferSamples:
@@ -376,19 +254,17 @@ class HerReplayBufferCorneTest:
         :return: Samples
         """
         # Normalize if needed and remove extra dimension (we are using only one env for now)
-        obs_ = self._normalize_obs(
+        obs_ = self.env.normalize_obs(
             {
                 key: obs[batch_indices, env_indices, :]
                 for key, obs in self.observations.items()
-            },
-            env,
+            }
         )
-        next_obs_ = self._normalize_obs(
+        next_obs_ = self.env.normalize_obs(
             {
                 key: obs[batch_indices, env_indices, :]
                 for key, obs in self.future_observation.items()
-            },
-            env,
+            }
         )
 
         # Convert to torch tensor
@@ -406,9 +282,9 @@ class HerReplayBufferCorneTest:
                 * (1 - self.timeouts[batch_indices, env_indices])
             ).reshape(-1, 1),
             rewards=self.to_torch(
-                self._normalize_reward(
-                    self.rewards[batch_indices, env_indices].reshape(-1, 1), env
-                )
+                self.env.normalize_reward(
+                    self.rewards[batch_indices, env_indices].reshape(-1, 1)
+                ).astype(np.float32)
             ),
         )
 
@@ -447,31 +323,11 @@ class HerReplayBufferCorneTest:
         next_obs["desired_goal"] = new_goals
 
         # Compute new reward
-        # Use vectorized compute reward function. See in wrapper.
-        """
-        rewards = self.env.env_method(
-            "compute_reward",
-            # the new state depends on the previous state and action
-            # s_{t+1} = f(s_t, a_t)
-            # so the next achieved_goal depends also on the previous state and action
-            # because we are in a GoalEnv:
-            # r_t = reward(s_t, a_t) = reward(next_achieved_goal, desired_goal)
-            # therefore we have to use next_obs["achieved_goal"] and not obs["achieved_goal"]
-            next_obs["achieved_goal"],
-            # here we use the new desired goal
-            obs["desired_goal"],
-            infos,
-            # we use the method of the first environment assuming that all environments are identical.
-            indices=[0],
-        )
-        """
-
+        # Use vectorized compute reward function
         rewards = compute_reward(next_obs["achieved_goal"], obs["desired_goal"], infos)
-        # rewards = rewards[0].astype(
-        #    np.float32
-        # )  # env_method returns a list containing one element
-        obs = self._normalize_obs(obs, env)
-        next_obs = self._normalize_obs(next_obs, env)
+        rewards = rewards.astype(np.float32)
+        obs = self.env.normalize_obs(obs)
+        next_obs = self.env.normalize_obs(next_obs)
 
         # Convert to torch tensor
         observations = {key: self.to_torch(obs) for key, obs in obs.items()}
@@ -487,7 +343,9 @@ class HerReplayBufferCorneTest:
                 self.dones[batch_indices, env_indices]
                 * (1 - self.timeouts[batch_indices, env_indices])
             ).reshape(-1, 1),
-            rewards=self.to_torch(self._normalize_reward(rewards.reshape(-1, 1), env)),
+            rewards=self.to_torch(
+                self.env.normalize_reward(rewards.reshape(-1, 1)).astype(np.float32)
+            ),
         )
 
     def _sample_goals(
@@ -513,26 +371,3 @@ class HerReplayBufferCorneTest:
             transition_indices_in_episode + batch_episode_start
         ) % self.buffer_size
         return self.future_observation["achieved_goal"][transition_indices, env_indices]
-
-    """
-    def truncate_last_trajectory(self) -> None:
-        # If we are at the start of an episode, no need to truncate
-        if (self._current_ep_start != self.position).any():
-            warnings.warn(
-                "The last trajectory in the replay buffer will be truncated.\n"
-                "If you are in the same episode as when the replay buffer was saved,\n"
-                "you should use `truncate_last_trajectory=False` to avoid that issue."
-            )
-            # only consider epsiodes that are not finished
-            for env_idx in np.where(self._current_ep_start != self.position)[0]:
-                # set done = True for last episodes
-                self.dones[self.position - 1, env_idx] = True
-                # make sure that last episodes can be sampled and
-                # update next episode start (self._current_ep_start)
-                self.get_episode_length(env_idx)
-                # handle infinite horizon tasks
-                if self.handle_timeout_termination:
-                    self.timeouts[
-                        self.position - 1, env_idx
-                    ] = True  # not an actual timeout, but it allows bootstrapping
-                """
