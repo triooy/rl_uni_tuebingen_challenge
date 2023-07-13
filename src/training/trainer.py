@@ -19,7 +19,7 @@ from src.utils.custom_policy import ResidualPolicy
 from src.gsde.gsde_policy import PPO_gSDE_MlpPolicy
 import logging
 
-from src.HER.HER2 import HerReplayBufferCorneTest
+from HER.HER import CustomHerReplayBuffer
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +67,9 @@ class Trainer:
         add_to_best_agents_when_best_agents_mean_reward_is_above=None,
         start_method: str = "fork",
         dict_observation_space: bool = False,
+        hindsight_replay_buffer: bool = False,
+        her_ratio: float = 0.5,
+        her_reward_function: str = "classic",
         **kwargs,
     ) -> None:
         self.reward = reward
@@ -82,9 +85,17 @@ class Trainer:
         self.csv_filename = csv_filename
         self.start_method = start_method
         self.dict_observation_space = dict_observation_space
+        self.hindsight_replay_buffer = hindsight_replay_buffer
+        self.her_ratio = her_ratio
+        self.her_reward_function = her_reward_function
+        self.agents_kwargs = agents_kwargs
 
         if "dict_observation_space" in agents_kwargs:
             self.dict_observation_space = self.agents_kwargs["dict_observation_space"]
+
+        if hindsight_replay_buffer:
+            self.hindsight_replay_buffer = hindsight_replay_buffer
+            self.her_reward_function = her_reward_function
 
         # create environments
         self.create_environments()
@@ -131,7 +142,6 @@ class Trainer:
         self.agent = agent
         self.model_type = agent
         self.policy = policy
-        self.agents_kwargs = agents_kwargs
         self.setup_agent()
 
         # callbacks
@@ -178,29 +188,14 @@ class Trainer:
             self.agents_kwargs["verbose"] = self.verbose
             self.agents_kwargs["tensorboard_log"] = self.tensorboard_log_dir
 
-            """obs_space = self.agents_kwargs["env"].observation_space
-            obs_dim = obs_space.shape[0]
-            goal_dim = obs_space.shape[0]
-            # convert obs_space to Dict
-            obs_space = convert_obs_to_dict2(obs_space, obs_dim, goal_dim)
+            if self.hindsight_replay_buffer:
+                self.agents_kwargs["replay_buffer_class"] = CustomHerReplayBuffer
 
-            HER_class = HerReplayBufferCorne(
-                buffer_size=self.agents_kwargs["buffer_size"],
-                env=self.agents_kwargs["env"],
-                observation_space=obs_space,
-                action_space=self.agents_kwargs["env"].action_space,
-                device=self.agents_kwargs["device"],
-
-            )"""
-
-            self.agents_kwargs["replay_buffer_class"] = HerReplayBufferCorneTest
-
-            self.agents_kwargs["replay_buffer_kwargs"] = {
-                # "buffer_size": self.agents_kwargs["buffer_size"],
-                "env": self.agents_kwargs["env"],
-                # "observation_space": self.agents_kwargs["env"].observation_space,
-                # "action_space": self.agents_kwargs["env"].action_space,
-            }
+                self.agents_kwargs["replay_buffer_kwargs"] = {
+                    "env": self.agents_kwargs["env"],
+                    "her_ratio": self.her_ratio,
+                    "her_reward_function": self.her_reward_function,
+                }
 
             self.agent = TD3(**self.agents_kwargs)
             logger.info(f"TD3 Agent parameters: {self.agents_kwargs}")
@@ -366,6 +361,7 @@ class Trainer:
                 weak=False,
                 start_method=self.start_method,
                 dict_observation_space=self.dict_observation_space,
+                her_reward_function=self.her_reward_function,
             )
             # load best agents
             for i, agent in enumerate(self.best_agents):
@@ -382,6 +378,7 @@ class Trainer:
             weak=False,
             start_method=self.start_method,
             dict_observation_space=self.dict_observation_space,
+            her_reward_function=self.her_reward_function,
         )
         self.eval_env = get_env(
             self.n_eval_envs,
@@ -391,6 +388,7 @@ class Trainer:
             weak=False,
             start_method=self.start_method,
             dict_observation_space=self.dict_observation_space,
+            her_reward_function=self.her_reward_function,
         )
 
     def write_csv(self, path):

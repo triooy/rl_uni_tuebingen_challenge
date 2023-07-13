@@ -8,7 +8,11 @@ def train(config) -> Trainer:
     agents_kwargs = config["agent_parameter"]
 
     trainer_kwargs = (
-        config["training"] | config["agent"] | config["logs"] | config["selfplay"]
+        config["training"]
+        | config["agent"]
+        | config["logs"]
+        | config["selfplay"]
+        | config["hindsight_replay"]
     )
 
     # check for custom policy kwargs
