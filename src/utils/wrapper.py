@@ -43,6 +43,7 @@ class CustomWrapper(gym.Wrapper):
         weak=True,
         reward=Reward.DEFAULT,
         dict_observation_space=False,
+        her_reward_function="classic",
     ):
         # Call the parent constructor, so we can access self.env later
         super().__init__(env)
@@ -57,6 +58,7 @@ class CustomWrapper(gym.Wrapper):
         self.opponents = {}
         self.weak = weak
         self.dict_observation_space = dict_observation_space
+        self.her_reward_function = her_reward_function
         self.info = {}
         if discrete_action_space:
             env.action_space = spaces.Discrete(7)  # Check if this is still right
@@ -80,22 +82,22 @@ class CustomWrapper(gym.Wrapper):
 
     def convert_obs_to_dict(self, obs):
 
-        obs_desired = obs.copy()
-        obs_desired[12] = 4.0
-        # sample between 0.8 and -0.8
-        obs_desired[13] = np.random.uniform(-0.8, 0.8)
+        if self.her_reward_function == "classic":
+            obs_desired = obs
+        elif self.her_reward_function == "observation_only":
+            obs_desired = obs
+        elif self.her_reward_function == "puck_in_goal":
+            obs_desired = obs.copy()
+            obs_desired[12] = 4.0
+            obs_desired[13] = np.random.uniform(-0.8, 0.8)
+        else:
+            raise NotImplementedError
 
         obs_tmp = {
             "observation": obs,
             "desired_goal": obs_desired,
             "achieved_goal": obs,
         }
-
-        # set values with current obs
-        # obs_tmp["observation"].value = obs
-        # obs_tmp["desired_goal"].value = obs
-        # obs_tmp["achieved_goal"].value = obs
-
         return obs_tmp
 
     def reset(self, **kwargs):
@@ -159,24 +161,8 @@ class CustomWrapper(gym.Wrapper):
                 return 0
 
     def compute_reward(self, achieved_goal, desired_goal, info):
-        """
-        r = 0
-        winner = self.info["winner"]
-        if self.done:
-            if self.winner == 0:  # tie
-                r += 0
-            elif self.winner == 1:  # you won
-                r += 10
-            else:  # opponent won
-                r -= 10
-        a = achieved_goal - desired_goal
-        # return a[:91]
-        # return np.array([r], np.float32)
-        p = 0.5
-        """
-        rew = np.array([5 * info[i]["winner"] for i in range(achieved_goal.shape[0])])
-        # return -np.power(np.dot(np.abs(achieved_goal - desired_goal), 0.5), p)
-        # return np.zeros(achieved_goal.shape[0])
+        """vectorize reward function of environment in order to make it compatible with HER"""
+        rew = np.array([10 * info[i]["winner"] for i in range(achieved_goal.shape[0])])
         return rew
 
     def set_opponent(self, opponents: Union[list, str, lh.BasicOpponent]):
@@ -250,6 +236,7 @@ def make_env(
     env_weights=[96, 2, 2],
     weak=None,
     dict_observation_space=False,
+    her_reward_function="classic",
 ):
     """
     Utility function for multiprocessed env.
@@ -288,6 +275,7 @@ def make_env(
             rank=rank,
             weak=weak_,
             dict_observation_space=dict_observation_space,
+            her_reward_function=her_reward_function,
         )
         cenv = Monitor(cenv, filename=None)
         return cenv
@@ -306,6 +294,7 @@ def get_env(
     weak=None,
     start_method="fork",
     dict_observation_space=False,
+    her_reward_function="classic",
 ):
     logger.info(
         f"Creating {n_envs} environments, with mode {mode}, \
@@ -323,6 +312,7 @@ def get_env(
                 weak=weak,  # strength of the basic opponent
                 env_weights=env_weights,
                 dict_observation_space=dict_observation_space,
+                her_reward_function=her_reward_function,
             )
             for i in range(n_envs)
         ],

@@ -7,6 +7,7 @@ from src.hyperparameter.hyperparameter_search import hyperparameter_search
 from src.training.train import train
 from src.training.test import test
 from src.training.evaluation import evaluate
+from src.training.action_space import action_space
 
 # setup loggers
 logging.config.fileConfig("configs/logging.conf", disable_existing_loggers=False)
@@ -40,6 +41,9 @@ if __name__ == "__main__":
     elif "evaluation" in config and config["evaluation"]:
         logger.info("Start evaluation...")
         evaluate(config)
+    elif "action_space" in config and config["action_space"]:
+        logger.info("Start action space evaluation...")
+        action_space(config)
     else:
         logger.info("Start training...")
         train(config)
