@@ -97,9 +97,9 @@ def evaluate(config):
                 agent1_path, agent2, config, DISCRETE_ACTION_SPACE, opponent
             )
             df_mean.loc[agent1, opponent] = mean_reward
-            df_mean.loc[opponent, agent1] = mean_reward
+            # df_mean.loc[opponent, agent1] = mean_reward
             df_std.loc[agent1, opponent] = std_reward
-            df_std.loc[opponent, agent1] = std_reward
+            # df_std.loc[opponent, agent1] = std_reward
         else:
             agent1_path = f"{base_path}/{agent1}"
             agent2_path = f"{base_path}/{agent2}"
@@ -109,9 +109,9 @@ def evaluate(config):
                 agent1_path, agent2_path, config, DISCRETE_ACTION_SPACE, opponent
             )
             df_mean.loc[agent1, agent2] = mean_reward
-            df_mean.loc[agent2, agent1] = mean_reward
+            # df_mean.loc[agent2, agent1] = mean_reward
             df_std.loc[agent1, agent2] = std_reward
-            df_std.loc[agent2, agent1] = std_reward
+            # df_std.loc[agent2, agent1] = std_reward
 
         save_location = config["evaluation"]["save_location"]
         # check if folder exists
