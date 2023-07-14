@@ -47,7 +47,7 @@ class Trainer:
         agents_kwargs: Dict[str, Any] = None,
         max_no_improvement_evals: int = 6,
         min_evals: int = 6,
-        n_eval_episodes: int = 500,
+        n_eval_episodes: int = 1000,
         n_evaluations: int = 6,
         reward_threshold: float = -np.inf,
         reward_threshold_2: float = -np.inf,
