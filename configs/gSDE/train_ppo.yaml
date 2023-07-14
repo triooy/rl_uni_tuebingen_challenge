@@ -15,20 +15,21 @@ hyperparameter:
 training:
   n_train_envs: 128
   n_eval_envs: 10
-  n_evaluations: 20
-  n_timesteps: 20000000
+  n_evaluations: 30
+  n_timesteps: 15000000
   normalize: true
+  max_no_improvement_evals: 60
   steps_for_threshold: 5000100
-  reward_threshold: 5
+  reward_threshold: -100
   steps_for_threshold_2: 3000100
-  reward_threshold_2: 0
+  reward_threshold_2: -100
   start_method: "fork"
 
 agent:
   agent: "PPO"
   policy: "PPO_MlpPolicy"
   normalize: true
-  negative_reward: true
+  reward: 0
   discrete_action_space: false
 
 agent_parameter: # ignored if hyperparameter search is enabled
