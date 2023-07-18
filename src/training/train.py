@@ -6,13 +6,15 @@ activation_fn = {"relu": nn.ReLU, "tanh": nn.Tanh, "leaky_relu": nn.LeakyReLU}
 
 def train(config) -> Trainer:
     agents_kwargs = config["agent_parameter"]
-
+    hindsight_replay = (
+        config["hindsight_replay"] if "hindsight_replay" in config else {}
+    )
     trainer_kwargs = (
         config["training"]
         | config["agent"]
         | config["logs"]
         | config["selfplay"]
-        | config["hindsight_replay"]
+        | hindsight_replay
     )
 
     # check for custom policy kwargs
