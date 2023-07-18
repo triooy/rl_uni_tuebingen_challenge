@@ -1,7 +1,7 @@
 logs:
-  csv_filename: "trainer_test.csv"
-  tensorboard_log_dir: "../trainer_test"
-  run_name: "trainer_test"
+  csv_filename: "td3_positive_reward.csv"
+  tensorboard_log_dir: "../rewards"
+  run_name: "td3_positive_reward"
 
 hyperparameter:
   do_hyperparameter_search: false
@@ -15,30 +15,31 @@ hyperparameter:
 training:
   n_train_envs: 128
   n_eval_envs: 10
-  n_evaluations: 200
-  n_timesteps: 20000000
+  n_evaluations: 40
+  n_timesteps: 15000000
+  max_no_improvement_evals: 60
   normalize: true
   steps_for_threshold: 5000100
-  reward_threshold: 5
+  reward_threshold: -100
   steps_for_threshold_2: 3000100
-  reward_threshold_2: 0
-  start_method: "spawn"
+  reward_threshold_2: -100
+  start_method: "fork"
 
 agent:
   agent: "TD3"
-  policy: "TD3_MultiInputPolicy"
+  policy: "TD3_MlpPolicy"
   normalize: true
-  reward: 0
+  reward: 1
   discrete_action_space: false
-  dict_observation_space: true
-  hindsight_replay_buffer: true
+  dict_observation_space: false
+  hindsight_replay_buffer: false
 
 agent_parameter: # ignored if hyperparameter search is enabled
   buffer_size: 1000000
   batch_size: 2048
   gamma: 0.99
   learning_rate: 0.0009200000000000001
-  device: cpu
+  device: cuda
   train_freq: 512
   gradient_steps: 512
   policy_kwargs: { net_arch: [256, 256] }
@@ -47,12 +48,12 @@ agent_parameter: # ignored if hyperparameter search is enabled
   target_noise_clip: 0.1
 
 selfplay:
-  selfplay: false
+  selfplay: true
   add_opponent_every_n_steps: 1000000
   change_opponent_every_n_steps: 128000
   first_opponent_after_n_steps: 1000000
   how_many_to_add: 1
-  best_agents_path: ../best_agents
+  best_agents_path: null
   add_to_best_agents_when_mean_reward_is_above: 9.0
   add_to_best_agents_when_best_agents_mean_reward_is_above: 1
 
