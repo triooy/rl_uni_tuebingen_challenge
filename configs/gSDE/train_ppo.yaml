@@ -1,7 +1,7 @@
 logs:
   csv_filename: "gSDE_ppo.csv"
-  tensorboard_log_dir: "../gSDE_ppo"
-  run_name: "baseline_ppo"
+  tensorboard_log_dir: "../test"
+  run_name: "test_ppo_r2_selfplay"
 
 hyperparameter:
   do_hyperparameter_search: false
@@ -15,8 +15,8 @@ hyperparameter:
 training:
   n_train_envs: 128
   n_eval_envs: 10
-  n_evaluations: 30
-  n_timesteps: 15000000
+  n_evaluations: 40
+  n_timesteps: 20000000
   normalize: true
   max_no_improvement_evals: 60
   steps_for_threshold: 5000100
@@ -29,7 +29,7 @@ agent:
   agent: "PPO"
   policy: "PPO_MlpPolicy"
   normalize: true
-  reward: 0
+  reward: 2
   discrete_action_space: false
 
 agent_parameter: # ignored if hyperparameter search is enabled
@@ -53,7 +53,7 @@ selfplay:
   add_opponent_every_n_steps: 1000000
   change_opponent_every_n_steps: 128000
   first_opponent_after_n_steps: 1000000
-  how_many_to_add: 1
+  how_many_to_add: 1 # set to null, to choose randomly
   best_agents_path: null
   add_to_best_agents_when_mean_reward_is_above: 9.6
   add_to_best_agents_when_best_agents_mean_reward_is_above: 1
