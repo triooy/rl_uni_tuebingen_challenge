@@ -99,7 +99,8 @@ class CustomWrapper(gym.Wrapper):
         """
         Reset the environment
         """
-        obs, info = self.env.reset()
+        one_starts = random.choice([True, False])
+        obs, info = self.env.reset(one_starting=one_starts)
         if self.dict_observation_space:
             # transform obs to dict for her
             obs = self.convert_obs_to_dict(obs)

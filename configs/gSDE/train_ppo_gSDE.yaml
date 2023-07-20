@@ -52,9 +52,6 @@ agent_parameter: # ignored if hyperparameter search is enabled
       ortho_init: true,
       activation_fn: "relu", 
       log_std_init: -2.5989870268124142, 
-      squash_output: false,
-      use_full_std: true,
-      use_expln: true,
       should_learn_features: true,
       }
 

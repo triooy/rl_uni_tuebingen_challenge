@@ -7,62 +7,31 @@ import torch as th
 from gymnasium import spaces
 from torch import nn
 
-from stable_baselines3.common.distributions import (
-    Distribution,
-    StateDependentNoiseDistribution,
-)
-from stable_baselines3.common.torch_layers import (
-    BaseFeaturesExtractor,
-    FlattenExtractor,
-    MlpExtractor,
-)
-from stable_baselines3.common.type_aliases import Schedule
-from stable_baselines3.common.policies import BasePolicy
-
-from src.gsde.gsde import StateDependentNoiseDistribution
+from src.gsde.basemodel import SB3BaseModel as BaseModel
+from src.gsde.gsde import GeneralizedStateDependentDistribution
 
 
-class PPO_gSDE_MlpPolicy(BasePolicy):
+class PPO_gSDE_MlpPolicy(BaseModel):
     def __init__(
         self,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        lr_schedule: Schedule,
+        lr_schedule,
         net_arch: Optional[Union[List[int], Dict[str, List[int]]]] = dict(
             pi=[64, 64], vf=[64, 64]
         ),
         activation_fn: Type[nn.Module] = nn.Tanh,
         ortho_init: bool = True,
         log_std_init: float = 0.0,
-        use_full_std: bool = True,
-        use_sde: bool = True,
-        use_expln: bool = False,
         should_learn_features: bool = False,
-        squash_output: bool = False,
-        features_extractor_class: Type[BaseFeaturesExtractor] = FlattenExtractor,
-        features_extractor_kwargs: Optional[Dict[str, Any]] = None,
         share_features_extractor: bool = True,
-        normalize_images: bool = True,
-        optimizer_class: Type[th.optim.Optimizer] = th.optim.Adam,
-        optimizer_kwargs: Optional[Dict[str, Any]] = None,
+        **kwargs,
     ):
-        if optimizer_kwargs is None:
-            optimizer_kwargs = {}
-            if optimizer_class == th.optim.Adam:
-                optimizer_kwargs["eps"] = 1e-5
-
         super().__init__(
             observation_space,
             action_space,
-            features_extractor_class,
-            features_extractor_kwargs,
-            optimizer_class=optimizer_class,
-            optimizer_kwargs=optimizer_kwargs,
-            squash_output=squash_output,
-            normalize_images=normalize_images,
         )
 
-        self.use_sde = use_sde
         self.net_arch = net_arch
         self.activation_fn = activation_fn
         self.ortho_init = ortho_init
@@ -80,55 +49,79 @@ class PPO_gSDE_MlpPolicy(BasePolicy):
         self.log_std_init = log_std_init
         self.should_learn_features = should_learn_features
         self.dist_kwargs = {
-            "use_full_std": use_full_std,
-            "squash_output": squash_output,
-            "use_expln": use_expln,
             "should_learn_features": should_learn_features,
         }
 
-        self.action_dist = StateDependentNoiseDistribution(
+        self.action_dist = GeneralizedStateDependentDistribution(
             int(np.prod(action_space.shape)),
             **self.dist_kwargs,
         )
 
         self._build(lr_schedule)
 
-    def _get_constructor_parameters(self) -> Dict[str, Any]:
-        data = super()._get_constructor_parameters()
+    def predict(
+        self,
+        observation: Union[np.ndarray, Dict[str, np.ndarray]],
+        state: Optional[Tuple[np.ndarray, ...]] = None,
+        epsiode_start=None,
+        deterministic: bool = False,
+    ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
+        self.set_training_mode(False)
+        obs, env = self.obs_to_tensor(observation)
 
-        default_none_kwargs = self.dist_kwargs or collections.defaultdict(lambda: None)
+        with th.no_grad():
+            actions = self._predict(obs, deterministic=deterministic)
+        # Convert to numpy, and reshape to the original action shape
+        actions = actions.cpu().numpy().reshape((-1, *self.action_space.shape))
 
-        data.update(
-            dict(
-                net_arch=self.net_arch,
-                activation_fn=self.activation_fn,
-                use_sde=self.use_sde,
-                log_std_init=self.log_std_init,
-                squash_output=default_none_kwargs["squash_output"],
-                use_full_std=default_none_kwargs["use_full_std"],
-                use_expln=default_none_kwargs["use_expln"],
-                lr_schedule=self._dummy_schedule,
-                ortho_init=self.ortho_init,
-                optimizer_class=self.optimizer_class,
-                optimizer_kwargs=self.optimizer_kwargs,
-                features_extractor_class=self.features_extractor_class,
-                features_extractor_kwargs=self.features_extractor_kwargs,
-            )
-        )
-        return data
+        # Actions could be on arbitrary scale, so clip the actions to avoid
+        # out of bound error (e.g. if sampling from a Gaussian distribution)
+        actions = np.clip(actions, self.action_space.low, self.action_space.high)
+
+        # Remove batch dimension if needed
+        if not env:
+            actions = actions.squeeze(axis=0)
+
+        return actions, state
 
     def reset_noise(self, n_envs: int = 1) -> None:
         self.action_dist.sample_weights(self.log_std, batch_size=n_envs)
 
-    def _build_mlp_extractor(self) -> None:
-        self.mlp_extractor = MlpExtractor(
-            self.features_dim,
-            net_arch=self.net_arch,
-            activation_fn=self.activation_fn,
-            device=self.device,
-        )
+    @staticmethod
+    def _dummy_schedule(progress_remaining: float) -> float:
+        """(float) Useful for pickling policy."""
+        del progress_remaining
+        return 0.0
 
-    def _build(self, lr_schedule: Schedule) -> None:
+    @staticmethod
+    def init_weights(module: nn.Module, gain: float = 1) -> None:
+        """
+        Orthogonal initialization (used in PPO and A2C)
+        """
+        if isinstance(module, (nn.Linear, nn.Conv2d)):
+            nn.init.orthogonal_(module.weight, gain=gain)
+            if module.bias is not None:
+                module.bias.data.fill_(0.0)
+
+    def _get_constructor_parameters(self) -> Dict[str, Any]:
+        parameters = super()._get_constructor_parameters()
+
+        parameters.update(
+            dict(
+                net_arch=self.net_arch,
+                activation_fn=self.activation_fn,
+                use_sde=True,
+                log_std_init=self.log_std_init,
+                lr_schedule=self._dummy_schedule,
+                ortho_init=self.ortho_init,
+                optimizer_kwargs={"eps": 1e-5},
+                features_extractor_class=self.features_extractor_class,
+                features_extractor_kwargs=self.features_extractor_kwargs,
+            )
+        )
+        return parameters
+
+    def _build(self, lr_schedule) -> None:
         self._build_mlp_extractor()
         latent_dim_pi = self.mlp_extractor.latent_dim_pi
         self.action_net, self.log_std = self.action_dist.proba_distribution_net(
@@ -154,7 +147,7 @@ class PPO_gSDE_MlpPolicy(BasePolicy):
                 module.apply(partial(self.init_weights, gain=gain))
 
         self.optimizer = self.optimizer_class(
-            self.parameters(), lr=lr_schedule(1), **self.optimizer_kwargs
+            self.parameters(), lr=lr_schedule(1), **{"eps": 1e-5}
         )
 
     def forward(
@@ -185,7 +178,7 @@ class PPO_gSDE_MlpPolicy(BasePolicy):
             vf_features = super().extract_features(obs, self.vf_features_extractor)
             return pi_features, vf_features
 
-    def _get_action_dist_from_latent(self, latent_pi: th.Tensor) -> Distribution:
+    def _get_action_dist_from_latent(self, latent_pi: th.Tensor):
         mean_actions = self.action_net(latent_pi)
         return self.action_dist.proba_distribution(
             mean_actions, self.log_std, latent_pi
@@ -203,23 +196,23 @@ class PPO_gSDE_MlpPolicy(BasePolicy):
     ) -> Tuple[th.Tensor, th.Tensor, Optional[th.Tensor]]:
         features = self.extract_features(obs)
         if self.share_features_extractor:
-            latent_pi, latent_vf = self.mlp_extractor(features)
+            hidden_pi, hidden_vf = self.mlp_extractor(features)
         else:
             pi_features, vf_features = features
-            latent_pi = self.mlp_extractor.forward_actor(pi_features)
-            latent_vf = self.mlp_extractor.forward_critic(vf_features)
-        distribution = self._get_action_dist_from_latent(latent_pi)
+            hidden_pi = self.mlp_extractor.forward_actor(pi_features)
+            hidden_vf = self.mlp_extractor.forward_critic(vf_features)
+        distribution = self._get_action_dist_from_latent(hidden_pi)
         log_prob = distribution.log_prob(actions)
-        values = self.value_net(latent_vf)
+        values = self.value_net(hidden_vf)
         entropy = distribution.entropy()
         return values, log_prob, entropy
 
     def get_distribution(self, obs: th.Tensor):
-        features = super().extract_features(obs, self.pi_features_extractor)
-        latent_pi = self.mlp_extractor.forward_actor(features)
-        return self._get_action_dist_from_latent(latent_pi)
+        params = super().extract_features(obs, self.pi_features_extractor)
+        hidden = self.mlp_extractor.forward_actor(params)
+        return self._get_action_dist_from_latent(hidden)
 
     def predict_values(self, obs: th.Tensor) -> th.Tensor:
-        features = super().extract_features(obs, self.vf_features_extractor)
-        latent_vf = self.mlp_extractor.forward_critic(features)
-        return self.value_net(latent_vf)
+        params = super().extract_features(obs, self.vf_features_extractor)
+        hidden = self.mlp_extractor.forward_critic(params)
+        return self.value_net(hidden)
