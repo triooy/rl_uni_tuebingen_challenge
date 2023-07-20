@@ -69,6 +69,7 @@ class Trainer:
         dict_observation_space: bool = False,
         hindsight_replay_buffer: bool = False,
         her_ratio: float = 0.5,
+        env_mode: int = CustomWrapper.NORMAL,
         her_reward_function: str = "classic",
         **kwargs,
     ) -> None:
@@ -89,6 +90,7 @@ class Trainer:
         self.her_ratio = her_ratio
         self.her_reward_function = her_reward_function
         self.agents_kwargs = agents_kwargs
+        self.env_mode = env_mode
 
         if "dict_observation_space" in agents_kwargs:
             self.dict_observation_space = self.agents_kwargs["dict_observation_space"]
@@ -246,6 +248,7 @@ class Trainer:
                 n_envs=self.n_train_envs,
                 first_opponent_after_n_steps=self.first_opponent_after_n_steps,
                 how_many_to_add=self.how_many_to_add,
+                env_mode=self.env_mode,
             )
             if self.best_agents_path:
                 if len(self.best_agents) == 0:
@@ -372,7 +375,7 @@ class Trainer:
         logger.info("Creating environments...")
         self.train_env = get_env(
             self.n_train_envs,
-            mode=None,
+            mode=self.env_mode,
             discrete_action_space=self.discrete_action_space,
             reward=self.reward,
             weak=False,

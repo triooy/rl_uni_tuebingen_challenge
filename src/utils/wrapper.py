@@ -33,6 +33,7 @@ class CustomWrapper(gym.Wrapper):
     NORMAL = 0
     TRAIN_SHOOTING = 1
     TRAIN_DEFENSE = 2
+    RANDOM = 3
 
     def __init__(
         self,
@@ -118,10 +119,12 @@ class CustomWrapper(gym.Wrapper):
         is the max number of steps reached (episode finished artificially), additional informations
         """
 
-        if self.mode == self.NORMAL:
+        if self.mode == self.NORMAL or self.mode == self.RANDOM:
             obs_agent2 = self.env.obs_agent_two()
             if isinstance(self.opponent, lh.BasicOpponent):
                 a2 = self.opponent.act(obs_agent2)
+            elif self.opponent is None:
+                a2 = np.random.uniform(-1, 1, 4)
             else:
                 a2 = self.opponent.predict(obs_agent2, deterministic=True)[0]
         else:
@@ -172,12 +175,12 @@ class CustomWrapper(gym.Wrapper):
             return True
         elif isinstance(opponents, list):
             self.opponent = opponents[self.rank]
-        elif isinstance(opponents, str):
+        else:
             self.opponent = opponents
 
-        if self.mode == self.NORMAL:
+        if self.mode == self.NORMAL or self.mode == self.RANDOM:
             if isinstance(self.opponent, str):
-                logger.info(f"Load opponent {self.opponent}")
+                logger.info(f"Load opponent {self.opponent} to env {self.rank}")
                 if self.opponent in self.opponents.keys():
                     self.opponent = self.opponents[self.opponent]
                     logger.info(f"Loaded opponent {self.opponent}")
@@ -186,6 +189,8 @@ class CustomWrapper(gym.Wrapper):
                     opponent = CustomWrapper.load_model_from_disk(path=self.opponent)
                     self.opponents[self.opponent] = opponent
                     self.opponent = opponent
+            elif self.opponent is None:
+                logger.info("Loading random agent to env {}".format(self.rank))
 
     @staticmethod
     def load_model_from_disk(
@@ -220,9 +225,7 @@ class CustomWrapper(gym.Wrapper):
 
         # check if normalize vec env is in dir
         if len(env) > 0:
-            logger.info(f"Load opponent env {os.path.join(dir, env[0])}")
             opponent.load_env(path=os.path.join(dir, env[0]))
-            logger.info(f"Loaded opponent env {os.path.join(dir, env[0])}")
 
         return opponent
 
@@ -257,16 +260,18 @@ def make_env(
                 weights=env_weights,
                 k=1,
             )[0]
+            env = lh.HockeyEnv(mode=new_mode)
+        elif mode == CustomWrapper.RANDOM:
+            env = lh.HockeyEnv(mode=CustomWrapper.NORMAL)
+            new_mode = mode
         else:
             new_mode = mode
+            env = lh.HockeyEnv(mode=new_mode)
         if weak is None:
             weak_ = random.choice([True, False])
         else:
             weak_ = weak
-        env = lh.HockeyEnv(mode=new_mode)
-        """ NEW """
 
-        """ NEW """
         cenv = CustomWrapper(
             env,
             new_mode,
