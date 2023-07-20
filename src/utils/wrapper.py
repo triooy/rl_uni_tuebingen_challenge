@@ -81,7 +81,6 @@ class CustomWrapper(gym.Wrapper):
             self.env.compute_reward = self.compute_reward
 
     def convert_obs_to_dict(self, obs):
-
         if self.her_reward_function == "classic":
             obs_desired = obs
         elif self.her_reward_function == "observation_only":
@@ -104,7 +103,8 @@ class CustomWrapper(gym.Wrapper):
         """
         Reset the environment
         """
-        obs, info = self.env.reset()
+        one_starts = random.choice([True, False])
+        obs, info = self.env.reset(one_starting=one_starts)
         if self.dict_observation_space:
             # transform obs to dict for her
             obs = self.convert_obs_to_dict(obs)
