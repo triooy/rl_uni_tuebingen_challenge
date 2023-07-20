@@ -15,6 +15,13 @@ from stable_baselines3.td3 import TD3
 import logging
 from enum import Enum
 
+from src.HER.utils import (
+    compute_reward_classic,
+    compute_reward_weighted_distance,
+    compute_reward_distance,
+    compute_reward_weighted_to_classic,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -81,21 +88,9 @@ class CustomWrapper(gym.Wrapper):
             self.env.compute_reward = self.compute_reward
 
     def convert_obs_to_dict(self, obs):
-
-        if self.her_reward_function == "classic":
-            obs_desired = obs
-        elif self.her_reward_function == "observation_only":
-            obs_desired = obs
-        elif self.her_reward_function == "puck_in_goal":
-            obs_desired = obs.copy()
-            obs_desired[12] = 4.0
-            obs_desired[13] = np.random.uniform(-0.8, 0.8)
-        else:
-            raise NotImplementedError
-
         obs_tmp = {
             "observation": obs,
-            "desired_goal": obs_desired,
+            "desired_goal": obs,
             "achieved_goal": obs,
         }
         return obs_tmp
@@ -160,10 +155,54 @@ class CustomWrapper(gym.Wrapper):
             else:
                 return 0
 
+    """
     def compute_reward(self, achieved_goal, desired_goal, info):
-        """vectorize reward function of environment in order to make it compatible with HER"""
+        
         rew = np.array([10 * info[i]["winner"] for i in range(achieved_goal.shape[0])])
         return rew
+    """
+    # 0  x pos player one
+    # 1  y pos player one
+    # 2  angle player one
+    # 3  x vel player one
+    # 4  y vel player one
+    # 5  angular vel player one
+    # 6  x player two
+    # 7  y player two
+    # 8  angle player two
+    # 9 y vel player two
+    # 10 y vel player two
+    # 11 angular vel player two
+    # 12 x pos puck
+    # 13 y pos puck
+    # 14 x vel puck
+    # 15 y vel puck
+    # Keep Puck Mode
+    # 16 time left player has puck
+    # 17 time left other player has puck
+    def compute_reward(
+        self,
+        achieved_goal,
+        desired_goal,
+        info,
+        weights=None,
+        p=0.5,
+        prob_to_classic=0.01,
+    ):
+        if self.her_reward_function == "classic":
+            return compute_reward_classic(achieved_goal, desired_goal, info)
+        elif self.her_reward_function == "distance":
+            return compute_reward_distance(achieved_goal, desired_goal, info)
+        elif self.her_reward_function == "weighted_distance":
+            return compute_reward_weighted_distance(
+                achieved_goal, desired_goal, info, weights, p
+            )
+        elif self.her_reward_function == "weighted_to_classic":
+            return compute_reward_weighted_to_classic(
+                achieved_goal, desired_goal, info, weights, p, prob_to_classic
+            )
+        else:
+            raise NotImplementedError()
 
     def set_opponent(self, opponents: Union[list, str, lh.BasicOpponent]):
         if isinstance(opponents, type(lh.BasicOpponent())):
@@ -277,7 +316,8 @@ def make_env(
             dict_observation_space=dict_observation_space,
             her_reward_function=her_reward_function,
         )
-        cenv = Monitor(cenv, filename=None)
+        filename = "monitor.csv"
+        cenv = Monitor(cenv, filename=filename)
         return cenv
 
     set_random_seed(seed)

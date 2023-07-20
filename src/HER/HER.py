@@ -10,14 +10,23 @@ from src.HER.utils import get_action_dim, get_obs_shape
 
 def compute_reward_classic(achieved_goal, desired_goal, info):
     rew = np.array([5 * info[i]["winner"] for i in range(achieved_goal.shape[0])])
-    # return -np.power(np.dot(np.abs(achieved_goal - desired_goal), 0.5), p)
-    # return np.zeros(achieved_goal.shape[0])
     return rew
 
 
 def compute_reward_distance(achieved_goal, desired_goal, info):
-    distance = np.linalg.norm(achieved_goal - desired_goal, axis=1)
-    return distance
+    p = 0.5
+    x = 1 / 18
+    weigths = np.ones(achieved_goal.shape[1]) * x
+    res = -np.power(np.dot(np.abs(achieved_goal - desired_goal), weigths), p)
+    return res
+
+
+def compute_reward_distance(achieved_goal, desired_goal, info):
+    p = 0.5
+    x = 1 / 18
+    weigths = np.ones(achieved_goal.shape[1]) * x
+    res = -np.power(np.dot(np.abs(achieved_goal - desired_goal), weigths), p)
+    return res
 
 
 class CustomHerReplayBuffer:
@@ -62,7 +71,7 @@ class CustomHerReplayBuffer:
         self.her_reward_function = her_reward_function
 
         if self.her_reward_function == "classic":
-            self.compute_reward = compute_reward_classic
+            self.compute_reward = compute_reward_distance
         elif self.her_reward_function == "observation_only":
             self.compute_reward = compute_reward_distance
         elif self.her_reward_function == "puck_in_goal":
@@ -335,7 +344,8 @@ class CustomHerReplayBuffer:
         }
 
         # The copy may cause a slow down
-        infos = copy.deepcopy(self.infos[batch_indices, env_indices])
+        # infos = copy.deepcopy(self.infos[batch_indices, env_indices])
+        infos = [{} for _ in range(len(batch_indices))]
 
         # Sample and set new goals
         new_goals = self._sample_goals(batch_indices, env_indices)

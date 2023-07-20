@@ -17,7 +17,7 @@ from stable_baselines3.her.goal_selection_strategy import (
 from src.HER.DICT import DictReplayBuffer
 
 
-class HerReplayBufferCorne(DictReplayBuffer):
+class CustomHerReplayBuffer(DictReplayBuffer):
     """
     Hindsight Experience Replay (HER) buffer.
     Paper: https://arxiv.org/abs/1707.01495
@@ -58,11 +58,13 @@ class HerReplayBufferCorne(DictReplayBuffer):
         env: VecEnv,
         device: Union[th.device, str] = "auto",
         n_envs: int = 1,
-        # optimize_memory_usage: bool = False,
+        optimize_memory_usage: bool = False,
         handle_timeout_termination: bool = True,
-        n_sampled_goal: int = 4,
+        n_sampled_goal: int = 1,
         goal_selection_strategy: Union[GoalSelectionStrategy, str] = "future",
         copy_info_dict: bool = True,
+        her_ratio=0.75,
+        her_reward_function="classic",
     ):
         super().__init__(
             buffer_size,
@@ -75,7 +77,6 @@ class HerReplayBufferCorne(DictReplayBuffer):
         )
         self.env = env
         self.copy_info_dict = copy_info_dict
-        assert copy_info_dict == True
 
         # convert goal_selection_strategy into GoalSelectionStrategy if string
         if isinstance(goal_selection_strategy, str):
@@ -356,6 +357,7 @@ class HerReplayBufferCorne(DictReplayBuffer):
             # we use the method of the first environment assuming that all environments are identical.
             indices=[0],
         )
+
         rewards = rewards[0].astype(
             np.float32
         )  # env_method returns a list containing one element
@@ -418,7 +420,17 @@ class HerReplayBufferCorne(DictReplayBuffer):
         transition_indices = (
             transition_indices_in_episode + batch_ep_start
         ) % self.buffer_size
-        return self.next_observations["achieved_goal"][transition_indices, env_indices]
+
+        # set net random goals
+        # choose 1024 random numbers between -3 and 3
+        # random_goals = np.random.uniform(-5, 5, size=(1024, 5))
+        new_goals = self.next_observations["achieved_goal"][
+            transition_indices, env_indices
+        ]
+        puck_position = new_goals[:, [12, 13]]
+        new_goals[:, [0, 1]] = puck_position
+        # new_goals[:, :5] = random_goals
+        return new_goals
 
     def truncate_last_trajectory(self) -> None:
         """
