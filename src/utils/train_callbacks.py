@@ -94,7 +94,7 @@ class SelfplayCallback(BaseCallback):
                         k=self.n_envs,
                     )
                     new_opponents = [str(opponent) for opponent in new_opponents]
-                    new_opponents = sorted(new_opponents, reverse=True)
+                    new_opponents = sorted(new_opponents, reverse=False)
                     new_opponents = [
                         opponent if opponent != "None" else None
                         for opponent in new_opponents
