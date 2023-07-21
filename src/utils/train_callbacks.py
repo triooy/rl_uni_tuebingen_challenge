@@ -8,6 +8,7 @@ import optuna
 from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.vec_env import sync_envs_normalization
+from src.utils.wrapper import CustomWrapper
 import logging
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,7 @@ class SelfplayCallback(BaseCallback):
         save_path="./",
         n_envs=128,
         first_opponent_after_n_steps=0,
+        env_mode=CustomWrapper.NORMAL,
         how_many_to_add=None,  # how many copies of a particular opponent to add to the list e.g.: 128 env add 2 copies of every past model
         # one model every 1 million steps, training for 20 million steps = 40 models
         # None = random
@@ -35,11 +37,14 @@ class SelfplayCallback(BaseCallback):
         super(SelfplayCallback, self).__init__(verbose)
         self.change_every_n_steps = change_every_n_steps
         self.add_opponent_every_n_steps = add_opponent_every_n_steps
-        self.opponents = [lh.BasicOpponent()]
         self.save_path = save_path
         self.n_envs = n_envs
         self.first_opponent_after_n_steps = first_opponent_after_n_steps
         self.how_many_to_add = how_many_to_add
+        self.env_mode = env_mode
+        self.opponents = []
+        if self.env_mode == CustomWrapper.RANDOM:
+            self.opponents.append(None)
 
     def _on_step(self) -> bool:
         """
@@ -88,11 +93,19 @@ class SelfplayCallback(BaseCallback):
                         self.opponents,
                         k=self.n_envs,
                     )
+                    new_opponents = [str(opponent) for opponent in new_opponents]
+                    new_opponents = sorted(new_opponents, reverse=False)
+                    new_opponents = [
+                        opponent if opponent != "None" else None
+                        for opponent in new_opponents
+                    ]
+
                 # set the opponents in the envs
                 self.model.get_env().env_method("set_opponent", new_opponents)
                 # log some stats
                 count_basic_opponent = [
-                    isinstance(opponent, lh.BasicOpponent) for opponent in new_opponents
+                    isinstance(opponent, (type(lh.BasicOpponent()), type(None)))
+                    for opponent in new_opponents
                 ].count(True)
                 self.logger.record(
                     "eval/number_of_selfs", self.n_envs - count_basic_opponent
