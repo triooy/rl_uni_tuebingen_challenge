@@ -1,7 +1,7 @@
 logs:
-  csv_filename: "gSDE_ppo.csv"
-  tensorboard_log_dir: "../experiments/gSDE"
-  run_name: "gsde_ppo_r0"
+  csv_filename: "reward.csv"
+  tensorboard_log_dir: "../rewards"
+  run_name: "PPO_1_NO_SELFPLAY"
 
 hyperparameter:
   do_hyperparameter_search: false
@@ -27,9 +27,9 @@ training:
 
 agent:
   agent: "PPO"
-  policy: "PPO_gSDE_MlpPolicy"
+  policy: "PPO_MlpPolicy"
   normalize: true
-  reward: 0
+  reward: 1
   discrete_action_space: false
 
 agent_parameter: # ignored if hyperparameter search is enabled
@@ -43,17 +43,10 @@ agent_parameter: # ignored if hyperparameter search is enabled
   gae_lambda: 0.95
   max_grad_norm: 0.6
   vf_coef: 0.6482388887006054
-  use_sde: true
-  sde_sample_freq: 16
   device: cuda
+  use_sde: false
   policy_kwargs:
-    { 
-      net_arch: [256, 256], 
-      ortho_init: true,
-      activation_fn: "relu", 
-      log_std_init: -2.5989870268124142, 
-      should_learn_features: true,
-      }
+    { net_arch: [256, 256], ortho_init: true, activation_fn: "relu" }
 
 selfplay:
   selfplay: false

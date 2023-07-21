@@ -1,7 +1,7 @@
 logs:
   csv_filename: "gSDE_ppo.csv"
   tensorboard_log_dir: "../experiments/gSDE"
-  run_name: "gsde_ppo_r0"
+  run_name: "gsde_ppo_r1"
 
 hyperparameter:
   do_hyperparameter_search: false
@@ -29,7 +29,7 @@ agent:
   agent: "PPO"
   policy: "PPO_gSDE_MlpPolicy"
   normalize: true
-  reward: 0
+  reward: 1
   discrete_action_space: false
 
 agent_parameter: # ignored if hyperparameter search is enabled
