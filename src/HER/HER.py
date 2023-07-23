@@ -8,27 +8,6 @@ from stable_baselines3.common.type_aliases import DictReplayBufferSamples
 from src.HER.utils import get_action_dim, get_obs_shape
 
 
-def compute_reward_classic(achieved_goal, desired_goal, info):
-    rew = np.array([5 * info[i]["winner"] for i in range(achieved_goal.shape[0])])
-    return rew
-
-
-def compute_reward_distance(achieved_goal, desired_goal, info):
-    p = 0.5
-    x = 1 / 18
-    weigths = np.ones(achieved_goal.shape[1]) * x
-    res = -np.power(np.dot(np.abs(achieved_goal - desired_goal), weigths), p)
-    return res
-
-
-def compute_reward_distance(achieved_goal, desired_goal, info):
-    p = 0.5
-    x = 1 / 18
-    weigths = np.ones(achieved_goal.shape[1]) * x
-    res = -np.power(np.dot(np.abs(achieved_goal - desired_goal), weigths), p)
-    return res
-
-
 class CustomHerReplayBuffer:
     """
     :param buffer_size: Buffer size
@@ -38,7 +17,6 @@ class CustomHerReplayBuffer:
     :param device: Devcie for Pytorch
     :param n_envs: Number of parallel environments
     :param her_ratio: Ratio between HER replays and regular replays (between 0 and 1)
-    :param her_reward_function: type of reward function for virtual reward
     :param optimize_memory_usage: this param is only needed to not break stable baseline implementation of off policy algorithms
     """
 
@@ -51,7 +29,6 @@ class CustomHerReplayBuffer:
         device="cpu",
         n_envs=1,
         her_ratio=0.75,
-        her_reward_function="classic",
         optimize_memory_usage=False,
     ):
         self.buffer_size = buffer_size
@@ -68,18 +45,6 @@ class CustomHerReplayBuffer:
         self.buffer_full = False
         self.device = device
         self.n_envs = n_envs
-        self.her_reward_function = her_reward_function
-
-        if self.her_reward_function == "classic":
-            self.compute_reward = compute_reward_distance
-        elif self.her_reward_function == "observation_only":
-            self.compute_reward = compute_reward_distance
-        elif self.her_reward_function == "puck_in_goal":
-            self.compute_reward = compute_reward_distance
-        else:
-            raise NotImplementedError(
-                f"{self.her_reward_function} reward function is not implemented"
-            )
 
         self.buffer_size = buffer_size // n_envs
         self.buffer_size = max(self.buffer_size, 1)
@@ -111,6 +76,7 @@ class CustomHerReplayBuffer:
         self.infos = np.array(
             [[{} for i in range(self.n_envs)] for j in range(self.buffer_size)]
         )
+        # infos = copy.deepcopy(self.infos[batch_indices, env_indices])
         self.env = env
         self.her_ratio = her_ratio
 
@@ -344,8 +310,8 @@ class CustomHerReplayBuffer:
         }
 
         # The copy may cause a slow down
-        # infos = copy.deepcopy(self.infos[batch_indices, env_indices])
-        infos = [{} for _ in range(len(batch_indices))]
+        infos = copy.deepcopy(self.infos[batch_indices, env_indices])
+        # infos = [{} for _ in range(len(batch_indices))]
 
         # Sample and set new goals
         new_goals = self._sample_goals(batch_indices, env_indices)
@@ -355,10 +321,27 @@ class CustomHerReplayBuffer:
 
         # Compute new reward
         # Use vectorized compute reward function
+        """
         rewards = self.compute_reward(
             next_obs["achieved_goal"], obs["desired_goal"], infos
         )
-        rewards = rewards.astype(np.float32)
+        """
+        rewards = self.env.env_method(
+            "compute_reward",
+            # the new state depends on the previous state and action
+            # s_{t+1} = f(s_t, a_t)
+            # so the next achieved_goal depends also on the previous state and action
+            # because we are in a GoalEnv:
+            # r_t = reward(s_t, a_t) = reward(next_achieved_goal, desired_goal)
+            # therefore we have to use next_obs["achieved_goal"] and not obs["achieved_goal"]
+            next_obs["achieved_goal"],
+            # here we use the new desired goal
+            obs["desired_goal"],
+            infos,
+            # we use the method of the first environment assuming that all environments are identical.
+            indices=[0],
+        )
+        rewards = rewards[0].astype(np.float32)
         obs = self.env.normalize_obs(obs)
         next_obs = self.env.normalize_obs(next_obs)
 

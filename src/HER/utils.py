@@ -18,7 +18,7 @@ def compute_reward_classic(achieved_goal, desired_goal, info):
 
 
 def compute_reward_weighted_to_classic(
-    achieved_goal, desired_goal, info, weights=None, p=0.5, percentage_to_classic=0.01
+    achieved_goal, desired_goal, info, weights=None, p=0.5, percentage_to_classic=0.05
 ):
     if weights is None:
         weights = [
