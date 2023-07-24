@@ -1,0 +1,65 @@
+logs:
+  csv_filename: "td3_her_2_no_self_weighted_to_classic_1.csv"
+  tensorboard_log_dir: "../debug"
+  run_name: "td3_her_2_no_self_weighted_to_classic_1"
+
+hyperparameter:
+  do_hyperparameter_search: false
+  study_name: "td3"
+  storage: "sqlite:///td3.db"
+  n_trials: 200
+  n_jobs: 1
+  n_startup_trials: 5
+  csv_filename: "hyperparameter_search.csv"
+
+training:
+  n_train_envs: 1
+  n_eval_envs: 10
+  n_evaluations: 40
+  n_timesteps: 20000000
+  max_no_improvement_evals: 60
+  normalize: true
+  steps_for_threshold: 5000100
+  reward_threshold: -100
+  steps_for_threshold_2: 3000100
+  reward_threshold_2: -100
+  start_method: "fork"
+
+agent:
+  agent: "TD3"
+  policy: "TD3_MultiInputPolicy"
+  normalize: true
+  reward: 2
+  discrete_action_space: false
+  dict_observation_space: true
+  hindsight_replay_buffer: true
+
+agent_parameter: # ignored if hyperparameter search is enabled
+  buffer_size: 1000000
+  batch_size: 2048
+  gamma: 0.99
+  learning_rate: 0.0009200000000000001
+  device: cpu
+  train_freq: 512
+  gradient_steps: 512
+  policy_kwargs: { net_arch: [256, 256] }
+  tau: 0.02
+  policy_delay: 1
+  target_noise_clip: 0.1
+
+selfplay:
+  selfplay: false
+  add_opponent_every_n_steps: 1000000
+  change_opponent_every_n_steps: 128000
+  first_opponent_after_n_steps: 1000000
+  how_many_to_add: 1
+  best_agents_path: null
+  add_to_best_agents_when_mean_reward_is_above: 9.0
+  add_to_best_agents_when_best_agents_mean_reward_is_above: 1
+
+hindsight_replay:
+  her_ratio: 0.5
+  her_reward_function: "weighted_to_classic"
+  her_weights:
+    [0.1, 0.1, 0.1, 0.1, 0.1, 0, 0, 0, 0, 0, 0, 0, 0.1, 0.1, 0.1, 0.1, 0, 0]
+  her_prob_stop_using_weights: 0.01

@@ -17,9 +17,9 @@ from src.utils.train_callbacks import SaveEnv, SelfplayCallback, TrialEvalCallba
 from src.utils.wrapper import CustomWrapper, get_env, Reward
 from src.utils.custom_policy import ResidualPolicy
 from src.gsde.gsde_policy import PPO_gSDE_MlpPolicy
+from src.HER.HER import CustomHindisghtExperienceReplay
 import logging
 
-from src.HER.HER import CustomHerReplayBuffer
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +70,9 @@ class Trainer:
         hindsight_replay_buffer: bool = False,
         her_ratio: float = 0.5,
         env_mode: int = CustomWrapper.NORMAL,
-        her_reward_function: str = "classic",
+        her_reward_function: str = "distance",
+        her_weights=np.zeros(18),
+        her_prob_stop_using_weights=0.05,
         **kwargs,
     ) -> None:
         self.reward = reward
@@ -89,6 +91,8 @@ class Trainer:
         self.hindsight_replay_buffer = hindsight_replay_buffer
         self.her_ratio = her_ratio
         self.her_reward_function = her_reward_function
+        self.her_prob_stop_using_weights = her_prob_stop_using_weights
+        self.her_weights = her_weights
         self.agents_kwargs = agents_kwargs
         self.env_mode = env_mode
 
@@ -191,12 +195,13 @@ class Trainer:
             self.agents_kwargs["tensorboard_log"] = self.tensorboard_log_dir
 
             if self.hindsight_replay_buffer:
-                self.agents_kwargs["replay_buffer_class"] = CustomHerReplayBuffer
+                self.agents_kwargs[
+                    "replay_buffer_class"
+                ] = CustomHindisghtExperienceReplay
 
                 self.agents_kwargs["replay_buffer_kwargs"] = {
                     "env": self.agents_kwargs["env"],
                     "her_ratio": self.her_ratio,
-                    "her_reward_function": self.her_reward_function,
                 }
 
             self.agent = TD3(**self.agents_kwargs)
@@ -365,6 +370,8 @@ class Trainer:
                 start_method=self.start_method,
                 dict_observation_space=self.dict_observation_space,
                 her_reward_function=self.her_reward_function,
+                her_weights=self.her_weights,
+                her_prob_stop_using_weights=self.her_prob_stop_using_weights,
             )
             # load best agents
             for i, agent in enumerate(self.best_agents):
@@ -382,6 +389,8 @@ class Trainer:
             start_method=self.start_method,
             dict_observation_space=self.dict_observation_space,
             her_reward_function=self.her_reward_function,
+            her_weights=self.her_weights,
+            her_prob_stop_using_weights=self.her_prob_stop_using_weights,
         )
         self.eval_env = get_env(
             self.n_eval_envs,
@@ -392,6 +401,8 @@ class Trainer:
             start_method=self.start_method,
             dict_observation_space=self.dict_observation_space,
             her_reward_function=self.her_reward_function,
+            her_prob_stop_using_weights=self.her_prob_stop_using_weights,
+            her_weights=self.her_weights,
         )
 
     def write_csv(self, path):

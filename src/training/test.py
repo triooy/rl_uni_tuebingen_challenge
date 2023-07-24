@@ -11,8 +11,14 @@ logger = logging.getLogger(__name__)
 def test(config):
     logger.info("Start testing...")
     DISCRETE_ACTION_SPACE = config["test"]["discrete_action_space"]
+    if "dict_observation_space" in config["test"]:
+        dict_observation_space = config["test"]["dict_observation_space"]
+    else:
+        dict_observation_space = False
     model1 = config["test"]["model_1_dir"]
-    model1 = CustomWrapper.load_model_from_disk(model1)
+    model1 = CustomWrapper.load_model_from_disk(
+        model1, dict_observation_space=dict_observation_space
+    )
     eval_env = get_env(
         mode=CustomWrapper.NORMAL,
         discrete_action_space=DISCRETE_ACTION_SPACE,
@@ -20,6 +26,7 @@ def test(config):
         weak=config["test"]["weak_opponent"],
         n_envs=config["test"]["n_eval_envs"],
         start_method=config["test"]["start_method"],
+        dict_observation_space=config["test"]["dict_observation_space"],
     )
     eval_env.render_mode = config["test"]["render_mode"]
 

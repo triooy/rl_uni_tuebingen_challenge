@@ -52,6 +52,8 @@ class CustomWrapper(gym.Wrapper):
         reward=Reward.DEFAULT,
         dict_observation_space=False,
         her_reward_function="classic",
+        her_weights=np.zeros(18),
+        her_prob_stop_using_weights=0.05,
     ):
         # Call the parent constructor, so we can access self.env later
         super().__init__(env)
@@ -67,6 +69,8 @@ class CustomWrapper(gym.Wrapper):
         self.weak = weak
         self.dict_observation_space = dict_observation_space
         self.her_reward_function = her_reward_function
+        self.her_prob_stop_using_weights = her_prob_stop_using_weights
+        self.her_weights = her_weights
         self.info = {}
         if discrete_action_space:
             env.action_space = spaces.Discrete(7)  # Check if this is still right
@@ -159,39 +163,11 @@ class CustomWrapper(gym.Wrapper):
             else:
                 return 0
 
-    """
-    def compute_reward(self, achieved_goal, desired_goal, info):
-        
-        rew = np.array([10 * info[i]["winner"] for i in range(achieved_goal.shape[0])])
-        return rew
-    """
-    # 0  x pos player one
-    # 1  y pos player one
-    # 2  angle player one
-    # 3  x vel player one
-    # 4  y vel player one
-    # 5  angular vel player one
-    # 6  x player two
-    # 7  y player two
-    # 8  angle player two
-    # 9 y vel player two
-    # 10 y vel player two
-    # 11 angular vel player two
-    # 12 x pos puck
-    # 13 y pos puck
-    # 14 x vel puck
-    # 15 y vel puck
-    # Keep Puck Mode
-    # 16 time left player has puck
-    # 17 time left other player has puck
     def compute_reward(
         self,
         achieved_goal,
         desired_goal,
         info,
-        weights=None,
-        p=0.5,
-        prob_to_classic=0.01,
     ):
         if self.her_reward_function == "classic":
             return compute_reward_classic(achieved_goal, desired_goal, info)
@@ -199,11 +175,15 @@ class CustomWrapper(gym.Wrapper):
             return compute_reward_distance(achieved_goal, desired_goal, info)
         elif self.her_reward_function == "weighted_distance":
             return compute_reward_weighted_distance(
-                achieved_goal, desired_goal, info, weights, p
+                achieved_goal, desired_goal, info, self.her_weights
             )
         elif self.her_reward_function == "weighted_to_classic":
             return compute_reward_weighted_to_classic(
-                achieved_goal, desired_goal, info, weights, p, prob_to_classic
+                achieved_goal,
+                desired_goal,
+                info,
+                self.her_weights,
+                percentage_to_classic=self.her_prob_stop_using_weights,
             )
         else:
             raise NotImplementedError()
@@ -233,9 +213,7 @@ class CustomWrapper(gym.Wrapper):
                 logger.info("Loading random agent to env {}".format(self.rank))
 
     @staticmethod
-    def load_model_from_disk(
-        path,
-    ):
+    def load_model_from_disk(path, dict_observation_space=False):
         # laod opponent from disk
         time.sleep(random.random() * 2)
         # read base dir
@@ -265,7 +243,10 @@ class CustomWrapper(gym.Wrapper):
 
         # check if normalize vec env is in dir
         if len(env) > 0:
-            opponent.load_env(path=os.path.join(dir, env[0]))
+            opponent.load_env(
+                path=os.path.join(dir, env[0]),
+                dict_observation_space=dict_observation_space,
+            )
 
         return opponent
 
@@ -280,6 +261,8 @@ def make_env(
     weak=None,
     dict_observation_space=False,
     her_reward_function="classic",
+    her_weights=np.zeros(18),
+    her_prob_stop_using_weights=0.05,
 ):
     """
     Utility function for multiprocessed env.
@@ -321,6 +304,8 @@ def make_env(
             weak=weak_,
             dict_observation_space=dict_observation_space,
             her_reward_function=her_reward_function,
+            her_weights=her_weights,
+            her_prob_stop_using_weights=her_prob_stop_using_weights,
         )
         filename = "monitor.csv"
         cenv = Monitor(cenv, filename=filename)
@@ -341,6 +326,8 @@ def get_env(
     start_method="fork",
     dict_observation_space=False,
     her_reward_function="classic",
+    her_weights=np.zeros(18),
+    her_prob_stop_using_weights=0.05,
 ):
     logger.info(
         f"Creating {n_envs} environments, with mode {mode}, \
@@ -359,6 +346,8 @@ def get_env(
                 env_weights=env_weights,
                 dict_observation_space=dict_observation_space,
                 her_reward_function=her_reward_function,
+                her_weights=her_weights,
+                her_prob_stop_using_weights=her_prob_stop_using_weights,
             )
             for i in range(n_envs)
         ],
@@ -375,7 +364,7 @@ class ModelWrapperTD3(TD3):
         )
         self.env = None
 
-    def load_env(self, path):
+    def load_env(self, path, dict_observation_space=False):
         train_env = DummyVecEnv(
             [
                 make_env(
@@ -383,6 +372,7 @@ class ModelWrapperTD3(TD3):
                     mode=None,
                     discrete_action_space=False,
                     reward=Reward.DEFAULT,
+                    dict_observation_space=dict_observation_space,
                 )
                 for i in range(1)
             ],

@@ -1,11 +1,12 @@
 test:
-  model_1_dir: "../best_agents/trial_0"
+  model_1_dir: "../final_exp_2/td3_2_with_self"
   model_2_dir: "../best_agents/trial_8"
   n_eval_episodes: 100
   n_eval_envs: 1
-  model_vs_model: true
+  model_vs_model: false
   render_mode: human
-  device: cuda
+  device: cpu
   discrete_action_space: false
+  dict_observation_space: false
   weak_opponent: false
-  start_method: "fork"
+  start_method: "spawn"
