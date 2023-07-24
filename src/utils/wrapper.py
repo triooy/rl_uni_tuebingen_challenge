@@ -213,9 +213,7 @@ class CustomWrapper(gym.Wrapper):
                 logger.info("Loading random agent to env {}".format(self.rank))
 
     @staticmethod
-    def load_model_from_disk(
-        path,
-    ):
+    def load_model_from_disk(path, dict_observation_space=False):
         # laod opponent from disk
         time.sleep(random.random() * 2)
         # read base dir
@@ -245,7 +243,10 @@ class CustomWrapper(gym.Wrapper):
 
         # check if normalize vec env is in dir
         if len(env) > 0:
-            opponent.load_env(path=os.path.join(dir, env[0]))
+            opponent.load_env(
+                path=os.path.join(dir, env[0]),
+                dict_observation_space=dict_observation_space,
+            )
 
         return opponent
 
@@ -363,7 +364,7 @@ class ModelWrapperTD3(TD3):
         )
         self.env = None
 
-    def load_env(self, path):
+    def load_env(self, path, dict_observation_space=False):
         train_env = DummyVecEnv(
             [
                 make_env(
@@ -371,6 +372,7 @@ class ModelWrapperTD3(TD3):
                     mode=None,
                     discrete_action_space=False,
                     reward=Reward.DEFAULT,
+                    dict_observation_space=dict_observation_space,
                 )
                 for i in range(1)
             ],
