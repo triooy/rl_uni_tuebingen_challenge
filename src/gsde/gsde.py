@@ -2,6 +2,7 @@ import torch as t
 from torch.distributions import Normal
 from torch import nn
 from typing import Optional, Tuple
+from src.gsde.distribution_helper import sum_independent_dims, get_mean
 
 
 class GeneralizedStateDependentDistribution:
@@ -36,7 +37,7 @@ class GeneralizedStateDependentDistribution:
 
     def get_actions(self, deterministic: bool = False) -> t.Tensor:
         if deterministic:
-            return self.mode()
+            return get_mean(self.distribution)
         return self.sample()
 
     def get_std(self, log_std: t.Tensor) -> t.Tensor:
@@ -57,14 +58,6 @@ class GeneralizedStateDependentDistribution:
         std = below_threshold + above_threshold
 
         return std
-
-    def entropy(self) -> Optional[t.Tensor]:
-        """
-        Computes the entropy of the probability distribution.
-        """
-        return GeneralizedStateDependentDistribution.sum_independent_dims(
-            self.distribution.entropy()
-        )
 
     def sample_weights(self, log_std: t.Tensor, batch_size: int = 1) -> None:
         """
@@ -182,7 +175,7 @@ class GeneralizedStateDependentDistribution:
 
         # Compute the log probability of the Gaussian actions
         log_prob = self.distribution.log_prob(gaussian_actions)
-        log_prob = GeneralizedStateDependentDistribution.sum_independent_dims(log_prob)
+        log_prob = sum_independent_dims(log_prob)
 
         return log_prob
 
@@ -225,29 +218,3 @@ class GeneralizedStateDependentDistribution:
         # Compute the log probability of the generated actions
         log_prob = self.log_prob(actions)
         return actions, log_prob
-
-    def mode(self) -> t.Tensor:
-        """
-        Computes the mode of the probability distribution.
-        """
-        actions = self.distribution.mean
-
-        return actions
-
-    @staticmethod
-    def sum_independent_dims(tensor: t.Tensor) -> t.Tensor:
-        """
-        Computes the sum of tensor elements along independent dimensions.
-
-        Args:
-            tensor (t.Tensor): Input tensor.
-
-        Returns:
-            t.Tensor: Tensor with the sum of elements along independent dimensions.
-        """
-        if len(tensor.shape) > 1:
-            # Sum tensor elements along dimension 1
-            tensor = tensor.sum(dim=1)
-        else:
-            tensor = tensor.sum()
-        return tensor

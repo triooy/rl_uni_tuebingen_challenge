@@ -1,4 +1,3 @@
-import collections
 from functools import partial
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
@@ -9,6 +8,7 @@ from torch import nn
 
 from src.gsde.basemodel import SB3BaseModel as BaseModel
 from src.gsde.gsde import GeneralizedStateDependentDistribution
+from src.gsde.distribution_helper import get_entropy
 
 
 class PPO_gSDE_MlpPolicy(BaseModel):
@@ -71,7 +71,6 @@ class PPO_gSDE_MlpPolicy(BaseModel):
 
         with th.no_grad():
             actions = self._predict(obs, deterministic=deterministic)
-        # Convert to numpy, and reshape to the original action shape
         actions = actions.cpu().numpy().reshape((-1, *self.action_space.shape))
 
         # Actions could be on arbitrary scale, so clip the actions to avoid
@@ -89,14 +88,14 @@ class PPO_gSDE_MlpPolicy(BaseModel):
 
     @staticmethod
     def _dummy_schedule(progress_remaining: float) -> float:
-        """(float) Useful for pickling policy."""
+        """For pickling purposes"""
         del progress_remaining
         return 0.0
 
     @staticmethod
     def init_weights(module: nn.Module, gain: float = 1) -> None:
         """
-        Orthogonal initialization (used in PPO and A2C)
+        Orthogonal initialization
         """
         if isinstance(module, (nn.Linear, nn.Conv2d)):
             nn.init.orthogonal_(module.weight, gain=gain)
@@ -150,23 +149,35 @@ class PPO_gSDE_MlpPolicy(BaseModel):
             self.parameters(), lr=lr_schedule(1), **{"eps": 1e-5}
         )
 
+    def compute_log_probs(self, obs: th.Tensor, deterministic: bool = False):
+        features = self.extract_features(obs)
+        if self.share_features_extractor:
+            hidden_pi, hidden_vf = self.mlp_extractor(features)
+        else:
+            pi_features, vf_features = features
+            hidden_pi = self.mlp_extractor.forward_actor(pi_features)
+            hidden_vf = self.mlp_extractor.forward_critic(vf_features)
+
+        values = self.value_net(hidden_vf)
+        distribution = self._get_action_dist_from_latent(hidden_pi)
+        return values, distribution
+
     def forward(
         self, obs: th.Tensor, deterministic: bool = False
     ) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
-        features = self.extract_features(obs)
-        if self.share_features_extractor:
-            latent_pi, latent_vf = self.mlp_extractor(features)
-        else:
-            pi_features, vf_features = features
-            latent_pi = self.mlp_extractor.forward_actor(pi_features)
-            latent_vf = self.mlp_extractor.forward_critic(vf_features)
-
-        values = self.value_net(latent_vf)
-        distribution = self._get_action_dist_from_latent(latent_pi)
+        values, distribution = self.compute_log_probs(obs, deterministic=deterministic)
         actions = distribution.get_actions(deterministic=deterministic)
         log_prob = distribution.log_prob(actions)
         actions = actions.reshape((-1, *self.action_space.shape))
         return actions, values, log_prob
+
+    def evaluate_actions(
+        self, obs: th.Tensor, actions: th.Tensor
+    ) -> Tuple[th.Tensor, th.Tensor, Optional[th.Tensor]]:
+        values, distribution = self.compute_log_probs(obs)
+        log_prob = distribution.log_prob(actions)
+        entropy = get_entropy(distribution)
+        return values, log_prob, entropy
 
     def extract_features(
         self, obs: th.Tensor
@@ -190,22 +201,6 @@ class PPO_gSDE_MlpPolicy(BaseModel):
         return self.get_distribution(observation).get_actions(
             deterministic=deterministic
         )
-
-    def evaluate_actions(
-        self, obs: th.Tensor, actions: th.Tensor
-    ) -> Tuple[th.Tensor, th.Tensor, Optional[th.Tensor]]:
-        features = self.extract_features(obs)
-        if self.share_features_extractor:
-            hidden_pi, hidden_vf = self.mlp_extractor(features)
-        else:
-            pi_features, vf_features = features
-            hidden_pi = self.mlp_extractor.forward_actor(pi_features)
-            hidden_vf = self.mlp_extractor.forward_critic(vf_features)
-        distribution = self._get_action_dist_from_latent(hidden_pi)
-        log_prob = distribution.log_prob(actions)
-        values = self.value_net(hidden_vf)
-        entropy = distribution.entropy()
-        return values, log_prob, entropy
 
     def get_distribution(self, obs: th.Tensor):
         params = super().extract_features(obs, self.pi_features_extractor)
