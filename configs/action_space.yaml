@@ -1,5 +1,5 @@
 action_space:
-  n_eval_episodes: 100
+  n_eval_episodes: 1000
   n_eval_envs: 1
   render_mode: human
   device: cpu
@@ -9,25 +9,16 @@ action_space:
   start_method: "spawn"
   models:
     [
-      "../best_agents/best_old",
-      "../best_agents/best_old",
-      "../best_agents/td3_corne",
-      "../best_agents/td3_corne",
-      "../best_agents/td3_corne",
-      "../best_agents/best_old",
-      "../best_agents/best_old",
-      "../best_agents/td3_corne",
+      "../final_exp_2/td3_0_no_self",
+      "../final_exp_2/td3_0_no_self",
+      "../final_exp_2/td3_0_with_self",
+      "../final_exp_2/td3_0_with_self",
+      "../final_exp_2/td3_2_with_self",
+      "../final_exp_2/td3_2_with_self",
+      "../final_exp_2/td3_2_no_self",
+      "../final_exp_2/td3_2_no_self",
     ]
   opponents:
-    [
-      "weak",
-      "strong",
-      "weak",
-      "strong",
-      "../best_agents/best_old",
-      "../best_agents/td3_corne",
-      "../best_agents/best_old",
-      "../best_agents/td3_corne",
-    ]
-  save_location: "../actionspace"
+    ["weak", "strong", "weak", "strong", "weak", "strong", "weak", "strong"]
+  save_location: "../actionspace_td3"
   render: false

@@ -101,8 +101,8 @@ def action_space(config):
         i += 1
 
     save_path = config["action_space"]["save_location"]
-    if not os.path.exists(os.path.dirname(save_path)):
-        os.makedirs(os.path.dirname(save_path))
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
 
     file_path = os.path.join(save_path, "action_space.pkl")
     df.to_pickle(file_path)
