@@ -18,8 +18,9 @@ def compute_reward_classic(achieved_goal, desired_goal, info):
 
 
 def compute_reward_weighted_to_classic(
-    achieved_goal, desired_goal, info, weights=None, p=0.5, percentage_to_classic=0.05
+    achieved_goal, desired_goal, info, weights=None, percentage_to_classic=0.01
 ):
+    p = 0.5
     if weights is None:
         weights = [
             0.1,
@@ -56,8 +57,12 @@ def compute_reward_distance(achieved_goal, desired_goal, info):
 
 
 def compute_reward_weighted_distance(
-    achieved_goal, desired_goal, info, weights=None, p=0.5
+    achieved_goal,
+    desired_goal,
+    info,
+    weights=None,
 ):
+    p = 0.5
     if weights is None:
         weights = [
             0.1,
@@ -85,92 +90,9 @@ def compute_reward_weighted_distance(
     return rew
 
 
-def compute_reward_old(self, achieved_goal, desired_goal, info):
-    p = 0.5
-    # x = 1 / 18
-    """
-        weigths = np.array(
-            [
-                0.001,
-                0.001,
-                0.001,
-                0.001,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0.001,
-                0.001,
-                0.001,
-                0.001,
-                0,
-                0,
-            ]
-        )
-        
-        weigths = np.array(
-            [
-                0.125,  # 0.125,
-                0.125,
-                0.125,
-                0.125,
-                0.125,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0.125,  # 0.125,
-                0.125,  # 0.125,
-                0.125,  # 0.125,
-                0.125,  # 0.125,
-                0,
-                0,
-            ]
-        )
-        # res = -np.power(np.dot(np.abs(achieved_goal - desired_goal), weigths), p)
-        # res = -np.dot(np.abs(achieved_goal - desired_goal), weigths)
-
-        # do not block reward once the goal is achieved
-        winners = np.array([w["winner"] for w in info])
-        winners_idx = np.where(winners == 1)[0]
-        loosers_idx = np.where(winners == -1)[0]
-
-        if len(winners_idx) > 0 or True:  # int(0.01 * len(achieved_goal)):
-            # weigths[:5] = np.array([0, 0, 0, 0, 0])
-            weigths = np.zeros(18)
-
-        # res = -np.dot(np.abs(achieved_goal - desired_goal), weigths)
-        res = -np.dot(
-            np.abs(achieved_goal[:, [12, 13]] - achieved_goal[:, [0, 1]]),
-            weigths[12:14],
-        )
-
-        res[winners_idx] = 10
-        res[loosers_idx] = -10
-
-        # res = np.ones(achieved_goal.shape[0]) * 100
-        """
-    desired_goal = np.ones(achieved_goal.shape[0])
-    winners = np.array([w["winner"] for w in info])
-
-    winners_idx = np.where(winners == 1)[0]
-
-    res = -10 * np.ones(achieved_goal.shape[0])
-    res[winners_idx] = 10
-
-    # res = -(desired_goal - winners) + 1
-
-    return res
-
-
-""" Other Utils """
+""" Shape utils from the Stable Baseline Implementation
+    to make sure types are correctly inferred from environment
+    observation and action space """
 
 
 def get_obs_shape(
@@ -195,11 +117,6 @@ def get_obs_shape(
         return observation_space.shape
     elif isinstance(observation_space, spaces.Dict):
         return {key: get_obs_shape(subspace) for (key, subspace) in observation_space.spaces.items()}  # type: ignore[misc]
-
-    else:
-        raise NotImplementedError(
-            f"{observation_space} observation space is not supported"
-        )
 
 
 def get_action_dim(action_space: spaces.Space) -> int:

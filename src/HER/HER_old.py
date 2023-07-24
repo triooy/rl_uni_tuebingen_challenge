@@ -427,8 +427,8 @@ class CustomHerReplayBuffer(DictReplayBuffer):
         new_goals = self.next_observations["achieved_goal"][
             transition_indices, env_indices
         ]
-        puck_position = new_goals[:, [12, 13]]
-        new_goals[:, [0, 1]] = puck_position
+        # puck_position = new_goals[:, [12, 13]]
+        # new_goals[:, [0, 1]] = puck_position
         # new_goals[:, :5] = random_goals
         return new_goals
 
