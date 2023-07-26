@@ -17,7 +17,7 @@ from src.utils.train_callbacks import SaveEnv, SelfplayCallback, TrialEvalCallba
 from src.utils.wrapper import CustomWrapper, get_env, Reward
 from src.utils.custom_policy import ResidualPolicy
 from src.gsde.gsde_policy import PPO_gSDE_MlpPolicy
-from src.HER.HER import CustomHindisghtExperienceReplay
+from src.HER import CustomHindisghtExperienceReplay
 import logging
 
 
