@@ -1,5 +1,5 @@
 action_space:
-  n_eval_episodes: 100
+  n_eval_episodes: 10000
   n_eval_envs: 1
   render_mode: human
   device: cpu
@@ -9,25 +9,43 @@ action_space:
   start_method: "spawn"
   models:
     [
-      "../best_agents/best_old",
-      "../best_agents/best_old",
-      "../best_agents/td3_corne",
-      "../best_agents/td3_corne",
-      "../best_agents/td3_corne",
-      "../best_agents/best_old",
-      "../best_agents/best_old",
-      "../best_agents/td3_corne",
+      "../all_models/gsde_ppo_r2_onlyselfplay",
+      "../all_models/PPO_1_NO_SELFPLAY",
+      "../all_models/td3_2_no_selfplay",
+      "../all_models/td3_1_no_selfplay",
+      "../all_models/PPO_2_NO_SELFPLAY",
+      "../all_models/PPO_2_SELFPLAY",
+      "../all_models/ppo_r2_onlyselfplay",
+      "../all_models/gsde_ppo_r1",
+      "../all_models/gsde_ppo_r0",
+      "../all_models/td3_0_with_selfplay",
+      "../all_models/PPO_0_NO_SELFPLAY",
+      "../all_models/td3_1_with_selfplay",
+      "../all_models/td3_2_with_selfplay",
+      "../all_models/gsde_ppo_r2",
+      "../all_models/td3_0_no_selfplay",
+      "../all_models/PPO_0_SELFPLAY",
+      "../all_models/PPO_1_SELFPLAY",
     ]
   opponents:
     [
-      "weak",
       "strong",
-      "weak",
       "strong",
-      "../best_agents/best_old",
-      "../best_agents/td3_corne",
-      "../best_agents/best_old",
-      "../best_agents/td3_corne",
+      "strong",
+      "strong",
+      "strong",
+      "strong",
+      "strong",
+      "strong",
+      "strong",
+      "strong",
+      "strong",
+      "strong",
+      "strong",
+      "strong",
+      "strong",
+      "strong",
+      "strong",
     ]
-  save_location: "../actionspace"
+  save_location: "../actionspace_final"
   render: false
