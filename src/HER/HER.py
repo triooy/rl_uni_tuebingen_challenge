@@ -6,7 +6,6 @@ import math
 
 # we need this to not break stable baseline implementation of off policy algorithms with replay buffers
 from stable_baselines3.common.type_aliases import DictReplayBufferSamples
-from src.HER.utils import get_action_dim, get_obs_shape
 
 """ Custom HER Replay Buffer. Some parts are influenced by stable baseline implementation of DictBufferClass in order
     to not break stable baseline implementation of off policy algorithms with replay buffers. """
