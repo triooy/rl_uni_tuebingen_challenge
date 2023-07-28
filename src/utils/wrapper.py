@@ -401,11 +401,15 @@ class ModelWrapperPPO(PPO):
         )
         self.env = None
 
-    def load_env(self, path):
+    def load_env(self, path, dict_observation_space=False):
         train_env = DummyVecEnv(
             [
                 make_env(
-                    i, mode=None, discrete_action_space=False, reward=Reward.DEFAULT
+                    i,
+                    mode=None,
+                    discrete_action_space=False,
+                    reward=Reward.DEFAULT,
+                    dict_observation_space=dict_observation_space,
                 )
                 for i in range(1)
             ],

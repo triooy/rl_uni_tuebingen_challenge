@@ -26,7 +26,7 @@ def test(config):
         weak=config["test"]["weak_opponent"],
         n_envs=config["test"]["n_eval_envs"],
         start_method=config["test"]["start_method"],
-        dict_observation_space=config["test"]["dict_observation_space"],
+        dict_observation_space=dict_observation_space,
     )
     eval_env.render_mode = config["test"]["render_mode"]
 
