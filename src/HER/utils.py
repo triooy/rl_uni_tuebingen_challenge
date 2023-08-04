@@ -1,7 +1,12 @@
 import numpy as np
 
 
-""" Different Reward Computing Functions"""
+""" Different Reward Computing Functions used during Hindisght Experience Replay
+
+These functions are actually used to overwrite the compute_reward method of the environment.
+
+They are imported in the src/utils/wrapper.py and then used in the HER class.
+"""
 
 
 def compute_reward_classic(achieved_goal, desired_goal, info):
