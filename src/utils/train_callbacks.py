@@ -312,6 +312,7 @@ class TrialEvalCallback(EvalCallback):
 
     def _on_step(self) -> bool:
         continue_training = True
+        # Do evaluation
         if self.eval_freq > 0 and self.n_calls % self.eval_freq == 0:
             continue_training = self._super_on_step()  # run normal evaluation
 
@@ -326,6 +327,7 @@ class TrialEvalCallback(EvalCallback):
                 if self.trial.should_prune():
                     self.is_pruned = True
                     return False
+        # check if reward is above threshold
         elif (
             self.n_calls < self.steps_for_threshold
             and self.last_mean_reward > self.reward_threshold
@@ -333,6 +335,7 @@ class TrialEvalCallback(EvalCallback):
         ):
             self.over_threshold = True
             logger.info(f"Passed threshold after {self.n_calls * self.n_procs}")
+        # check if reward is below threshold
         elif (
             self.n_calls > self.steps_for_threshold
             and self.last_mean_reward < self.reward_threshold
@@ -342,6 +345,7 @@ class TrialEvalCallback(EvalCallback):
             logger.info(
                 f"Stop training because reward {self.last_mean_reward} is below {self.reward_threshold} after {self.n_calls * self.n_procs} steps"
             )
+        # check if reward is above threshold 2
         elif (
             self.n_calls < self.steps_for_threshold_2
             and self.last_mean_reward > self.reward_threshold_2
@@ -349,6 +353,7 @@ class TrialEvalCallback(EvalCallback):
         ):
             self.over_threshold_2 = True
             logger.info(f"Passed threshold 2 after {self.n_calls * self.n_procs}")
+        # check if reward is below threshold 2
         elif (
             self.n_calls > self.steps_for_threshold_2
             and self.last_mean_reward < self.reward_threshold_2
@@ -425,3 +430,57 @@ class TrialEvalCallback(EvalCallback):
                 )
                 self.callback_on_new_best.on_step()
                 self.callback_on_new_best.path = path
+
+
+class StopTrainingOnNoModelImprovementWithSelfplay(BaseCallback):
+    """
+    Stop the training early if there is no new best model (new best mean reward for basic opponent and selfplay) after more than N consecutive evaluations.
+
+    It is possible to define a minimum number of evaluations before start to count evaluations without improvement.
+
+    It must be used with the ``EvalCallback``.
+
+    :param max_no_improvement_evals: Maximum number of consecutive evaluations without a new best model.
+    :param min_evals: Number of evaluations before start to count evaluations without improvements.
+    :param verbose: Verbosity level: 0 for no output, 1 for indicating when training ended because no new best model
+    """
+
+    def __init__(
+        self, max_no_improvement_evals: int, min_evals: int = 0, verbose: int = 0
+    ):
+        super().__init__(verbose=verbose)
+        self.max_no_improvement_evals = max_no_improvement_evals
+        self.max_no_improvement_evals_selfplay = max_no_improvement_evals
+        self.min_evals = min_evals
+        self.last_best_mean_reward = -np.inf
+        self.last_best_mean_reward_selfplay = -np.inf
+        self.no_improvement_evals = 0
+
+    def _on_step(self) -> bool:
+        assert (
+            self.parent is not None
+        ), "``StopTrainingOnNoModelImprovement`` callback must be used with an ``EvalCallback``"
+
+        continue_training = True
+
+        if self.n_calls > self.min_evals:
+            if (
+                self.parent.best_mean_reward > self.last_best_mean_reward
+                and self.parent.selfplay_best_mean_reward
+                > self.last_best_mean_reward_selfplay
+            ):
+                self.no_improvement_evals = 0
+            else:
+                self.no_improvement_evals += 1
+                if self.no_improvement_evals > self.max_no_improvement_evals:
+                    continue_training = False
+
+        self.last_best_mean_reward = self.parent.best_mean_reward
+        self.last_best_mean_reward_selfplay = self.parent.selfplay_best_mean_reward
+
+        if self.verbose >= 1 and not continue_training:
+            print(
+                f"Stopping training because there was no new best model in the last {self.no_improvement_evals:d} evaluations"
+            )
+
+        return continue_training

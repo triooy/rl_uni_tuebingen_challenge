@@ -1,16 +1,16 @@
 logs:
-  csv_filename: "final_hypersearch_ppo.csv"
-  tensorboard_log_dir: "../final_hypersearch_ppo"
-  run_name: "final_hypersearch_ppo"
+  csv_filename: "final_hypersearch_td3.csv"
+  tensorboard_log_dir: "../final_hypersearch"
+  run_name: "final_hypersearch_td3"
 
 hyperparameter:
   do_hyperparameter_search: true
-  study_name: "final_hypersearch_ppo"
-  storage: "sqlite:////home/dh/logdir/ppo.db"
+  study_name: "final_hypersearch_td3"
+  storage: "sqlite:////home/dh/logdir/td3.db"
   n_trials: 200
   n_jobs: 1
   n_startup_trials: 5
-  csv_filename: "final_hypersearch_ppo.csv"
+  csv_filename: "final_hypersearch_td3.csv"
 
 training:
   n_train_envs: 128
@@ -18,39 +18,38 @@ training:
   n_evaluations: 40
   n_timesteps: 40000000
   normalize: true
+  max_no_improvement_evals: 5
   steps_for_threshold: 5000100
-  reward_threshold: 5
+  reward_threshold: 3
   steps_for_threshold_2: 3000100
-  reward_threshold_2: 0
+  reward_threshold_2: -2
   start_method: "fork"
 
 agent:
-  agent: "PPO"
-  policy: "PPO_MlpPolicy"
+  agent: "TD3"
+  policy: "TD3_MlpPolicy"
   normalize: true
-  reward: 0
+  negative_reward: 0
   discrete_action_space: false
+  dict_observation_space: false
+  hindsight_replay_buffer: false
 
 agent_parameter: # ignored if hyperparameter search is enabled
-  n_steps: 512
+  buffer_size: 10000
   batch_size: 2048
-  gamma: 0.999
-  learning_rate: 0.00073
-  ent_coef: 0.0009673352
-  clip_range: 0.2
-  n_epochs: 5
-  gae_lambda: 0.95
-  max_grad_norm: 0.6
-  vf_coef: 0.6482388887006054
+  gamma: 0.98
+  learning_rate: 0.00328704929928516
   device: cuda
-  policy_kwargs:
-    { net_arch: [256, 256], ortho_init: true, activation_fn: "relu" }
+  train_freq: 1
+  gradient_steps: 1
+  policy_kwargs: { net_arch: [256, 256] }
+  tau: 0.05
 
 selfplay:
   selfplay: true
   add_opponent_every_n_steps: 1000000
   change_opponent_every_n_steps: 128000
-  first_opponent_after_n_steps: 2000000
+  first_opponent_after_n_steps: 1000000
   how_many_to_add: 1
   best_agents_path: ../best_agents
   add_to_best_agents_when_mean_reward_is_above: 9.6

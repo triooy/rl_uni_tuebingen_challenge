@@ -22,7 +22,7 @@ def get_objective_fn(config):
     """
     run_name = config["logs"]["run_name"]
     if config["agent"]["agent"] == "PPO":
-        sample_fn = sample_gsde_ppo_params
+        sample_fn = sample_new_ppo_params2
     elif config["agent"]["agent"] == "TD3":
         sample_fn = sample_td3_params
     else:
@@ -32,10 +32,12 @@ def get_objective_fn(config):
         params = sample_fn(trial)
         normalize = params.pop("normalize")
         reward = params.pop("reward")
+        how_many_to_add = params.pop("how_many_to_add")
         discrete_action_space = params.pop("discrete_action_space")
         config["agent"]["normalize"] = normalize
         config["agent"]["reward"] = reward
         config["agent"]["discrete_action_space"] = discrete_action_space
+        config["agent"]["how_many_to_add"] = how_many_to_add
         config["agent_parameter"] = params
         config["logs"]["run_name"] = run_name + f"_{trial.number}"
         trainer = train(config)

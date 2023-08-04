@@ -1,5 +1,8 @@
 from src.training.trainer import Trainer
 from torch import nn
+import logging
+
+logger = logging.getLogger(__name__)
 
 activation_fn = {"relu": nn.ReLU, "tanh": nn.Tanh, "leaky_relu": nn.LeakyReLU}
 
@@ -27,6 +30,8 @@ def train(config) -> Trainer:
             agents_kwargs["policy_kwargs"] = policy_kwargs
 
     trainer_kwargs["agents_kwargs"] = agents_kwargs
+    logger.info(f"############### Starting training #################")
+    logger.info(f"trainer_kwargs: {trainer_kwargs}")
 
     trainer = Trainer(**trainer_kwargs)
     trainer.train()

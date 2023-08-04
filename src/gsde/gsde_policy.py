@@ -25,7 +25,7 @@ class PPO_gSDE_MlpPolicy(BaseModel):
         activation_fn: Type[nn.Module] = nn.Tanh,
         ortho_init: bool = True,
         log_std_init: float = 0.0,
-        should_learn_features: bool = False,
+        should_learn_features: bool = True,
         share_features_extractor: bool = True,
         **kwargs,
     ):
