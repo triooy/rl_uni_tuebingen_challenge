@@ -8,6 +8,7 @@ from src.training.train import train
 from src.training.test import test
 from src.training.evaluation import evaluate
 from src.training.action_space import action_space
+from src.utils.utils import print_logo
 
 # setup loggers
 logging.config.fileConfig("configs/logging.conf", disable_existing_loggers=False)
@@ -24,6 +25,9 @@ args = parser.parse_args()
 if __name__ == "__main__":
     # Set pytorch num threads to 1 for faster training.
     torch.set_num_threads(1)
+
+    # print logo
+    print_logo()
 
     # Load config file
     config = yaml.load(open(args.config, "r"), Loader=yaml.SafeLoader)

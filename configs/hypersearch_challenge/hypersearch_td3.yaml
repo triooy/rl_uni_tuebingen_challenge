@@ -1,0 +1,56 @@
+logs:
+  csv_filename: "final_hypersearch_td3.csv"
+  tensorboard_log_dir: "../final_hypersearch"
+  run_name: "final_hypersearch_td3"
+
+hyperparameter:
+  do_hyperparameter_search: true
+  study_name: "final_hypersearch_td3"
+  storage: "sqlite:////home/dh/logdir/td3.db"
+  n_trials: 200
+  n_jobs: 1
+  n_startup_trials: 5
+  csv_filename: "final_hypersearch_td3.csv"
+
+training:
+  n_train_envs: 128
+  n_eval_envs: 10
+  n_evaluations: 30
+  n_timesteps: 30000000
+  normalize: true
+  max_no_improvement_evals: 5
+  steps_for_threshold: 5000100
+  reward_threshold: 1
+  steps_for_threshold_2: 3000100
+  reward_threshold_2: -2
+  start_method: "fork"
+
+agent:
+  agent: "TD3"
+  policy: "TD3_MlpPolicy"
+  normalize: true
+  negative_reward: 0
+  discrete_action_space: false
+  dict_observation_space: false
+  hindsight_replay_buffer: false
+
+agent_parameter: # ignored if hyperparameter search is enabled
+  buffer_size: 10000
+  batch_size: 2048
+  gamma: 0.98
+  learning_rate: 0.00328704929928516
+  device: cuda
+  train_freq: 1
+  gradient_steps: 1
+  policy_kwargs: { net_arch: [256, 256] }
+  tau: 0.05
+
+selfplay:
+  selfplay: true
+  add_opponent_every_n_steps: 1000000
+  change_opponent_every_n_steps: 128000
+  first_opponent_after_n_steps: 1000000
+  how_many_to_add: 1
+  best_agents_path: ../best_agents
+  add_to_best_agents_when_mean_reward_is_above: 9.95
+  add_to_best_agents_when_best_agents_mean_reward_is_above: 1

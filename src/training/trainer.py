@@ -13,7 +13,12 @@ from stable_baselines3.td3.policies import MlpPolicy as TD3_MlpPolicy
 from stable_baselines3.td3.policies import MultiInputPolicy as TD3_MultiInputPolicy
 
 from src.hyperparameter.hyperparams import *
-from src.utils.train_callbacks import SaveEnv, SelfplayCallback, TrialEvalCallback
+from src.utils.train_callbacks import (
+    SaveEnv,
+    SelfplayCallback,
+    TrialEvalCallback,
+    StopTrainingOnNoModelImprovementWithSelfplay,
+)
 from src.utils.wrapper import CustomWrapper, get_env, Reward
 from src.utils.custom_policy import ResidualPolicy
 from src.gsde.gsde_policy import PPO_gSDE_MlpPolicy
@@ -174,6 +179,7 @@ class Trainer:
         self.add_to_best_agents_when_mean_reward_is_above = (
             add_to_best_agents_when_mean_reward_is_above
         )
+        self.write_csv(os.path.join(self.save_path, self.csv_filename))
 
     def setup_agent(self):
         """Setup agent"""
@@ -212,11 +218,18 @@ class Trainer:
         """Setup callbacks for training"""
         # Stop training if there is no improvement after more than 5 evaluations
         logger.info("Setting up callbacks...")
-        self.stop_train_callback = StopTrainingOnNoModelImprovement(
-            max_no_improvement_evals=self.max_no_improvement_evals,
-            min_evals=self.min_evals,
-            verbose=self.verbose,
-        )
+        if self.selfplay:
+            self.stop_train_callback = StopTrainingOnNoModelImprovementWithSelfplay(
+                max_no_improvement_evals=self.max_no_improvement_evals,
+                min_evals=self.min_evals,
+                verbose=self.verbose,
+            )
+        else:
+            self.stop_train_callback = StopTrainingOnNoModelImprovement(
+                max_no_improvement_evals=self.max_no_improvement_evals,
+                min_evals=self.min_evals,
+                verbose=self.verbose,
+            )
         if self.normalize:
             # Save the environment that was used for training
             # This is important because the running mean and std are not saved in the model
@@ -410,7 +423,6 @@ class Trainer:
             "params": [str(self.agents_kwargs)],
             "normalize": [self.normalize],
             "reward": [self.reward],
-            "discrete_action_space": [self.discrete_action_space],
             "training_time": [self.train_time],
             "mean_reward": [self.mean_reward],
             "std_reward": [self.std_reward],
@@ -421,6 +433,7 @@ class Trainer:
             "policy": [self.policy],
             "n_timesteps": [self.n_timesteps],
             "run_name": [self.run_name],
+            "how_many_to_add": [self.how_many_to_add],
         }
         if self.selfplay:
             data["best_agent_mean_reward"] = [self.best_agent_mean_reward]
@@ -428,6 +441,10 @@ class Trainer:
             df = pd.DataFrame(data)
         else:
             df = pd.DataFrame(data)
+        # check if dir exists
+        if not os.path.isdir(self.save_path):
+            os.makedirs(self.save_path, exist_ok=True)
+
         # check if file exists
         if os.path.isfile(path):
             df.to_csv(path, mode="a", header=False)
