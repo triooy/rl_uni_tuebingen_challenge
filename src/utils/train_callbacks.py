@@ -86,13 +86,11 @@ class SelfplayCallback(BaseCallback):
                     new_opponents = []
                     for opponent in self.opponents:
                         new_opponents += [opponent for i in range(self.how_many_to_add)]
-                    for i in range(self.n_envs - len(new_opponents)):
-                        new_opponents.append(lh.BasicOpponent(weak=False))
-
                     random.shuffle(new_opponents)
                     new_opponents = new_opponents[: self.n_envs - 1]
                     new_opponents = sorted(new_opponents, reverse=False)
-                    new_opponents.append(lh.BasicOpponent(weak=False))
+                    for i in range(self.n_envs - len(new_opponents)):
+                        new_opponents.append(lh.BasicOpponent(weak=False))
                 else:  # otherwise choose random
                     new_opponents = random.choices(
                         self.opponents,
