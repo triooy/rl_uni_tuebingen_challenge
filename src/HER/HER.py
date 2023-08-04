@@ -8,7 +8,7 @@ import math
 from stable_baselines3.common.type_aliases import DictReplayBufferSamples
 
 """ Custom HER Replay Buffer. Some parts are influenced by stable baseline implementation of DictBufferClass in order
-    to not break stable baseline implementation of off policy algorithms with replay buffers. """
+    to not break stable baseline implementation of off policy algorithms with replay buffers.. """
 
 
 class CustomHindisghtExperienceReplay:

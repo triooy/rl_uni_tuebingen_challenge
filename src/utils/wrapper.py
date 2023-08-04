@@ -405,11 +405,7 @@ class ModelWrapperPPO(PPO):
         train_env = DummyVecEnv(
             [
                 make_env(
-                    i,
-                    mode=None,
-                    discrete_action_space=False,
-                    reward=Reward.DEFAULT,
-                    dict_observation_space=dict_observation_space,
+                    i, mode=None, discrete_action_space=False, reward=Reward.DEFAULT
                 )
                 for i in range(1)
             ],
