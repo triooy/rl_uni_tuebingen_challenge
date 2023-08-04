@@ -83,25 +83,27 @@ class SelfplayCallback(BaseCallback):
                 and self.n_calls % self.change_every_n_steps == 0
             ):
                 if self.how_many_to_add:  # how many copies to add
-                    new_opponents = [lh.BasicOpponent(weak=False)]
+                    new_opponents = []
                     for opponent in self.opponents:
                         new_opponents += [opponent for i in range(self.how_many_to_add)]
                     for i in range(self.n_envs - len(new_opponents)):
                         new_opponents.append(lh.BasicOpponent(weak=False))
 
                     random.shuffle(new_opponents)
-                    new_opponents = new_opponents[: self.n_envs]
+                    new_opponents = new_opponents[: self.n_envs - 1]
+                    new_opponents = sorted(new_opponents, reverse=False)
+                    new_opponents.append(lh.BasicOpponent(weak=False))
                 else:  # otherwise choose random
                     new_opponents = random.choices(
                         self.opponents,
                         k=self.n_envs,
                     )
                     new_opponents = [str(opponent) for opponent in new_opponents]
-                new_opponents = sorted(new_opponents, reverse=False)
-                new_opponents = [
-                    opponent if opponent != "None" else None
-                    for opponent in new_opponents
-                ]
+                    new_opponents = sorted(new_opponents, reverse=False)
+                    new_opponents = [
+                        opponent if opponent != "None" else None
+                        for opponent in new_opponents
+                    ]
 
                 # set the opponents in the envs
                 self.model.get_env().env_method("set_opponent", new_opponents)
