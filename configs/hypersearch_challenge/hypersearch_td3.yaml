@@ -15,12 +15,12 @@ hyperparameter:
 training:
   n_train_envs: 128
   n_eval_envs: 10
-  n_evaluations: 40
-  n_timesteps: 40000000
+  n_evaluations: 30
+  n_timesteps: 30000000
   normalize: true
   max_no_improvement_evals: 5
   steps_for_threshold: 5000100
-  reward_threshold: 3
+  reward_threshold: 1
   steps_for_threshold_2: 3000100
   reward_threshold_2: -2
   start_method: "fork"
@@ -52,5 +52,5 @@ selfplay:
   first_opponent_after_n_steps: 1000000
   how_many_to_add: 1
   best_agents_path: ../best_agents
-  add_to_best_agents_when_mean_reward_is_above: 9.6
+  add_to_best_agents_when_mean_reward_is_above: 9.95
   add_to_best_agents_when_best_agents_mean_reward_is_above: 1
