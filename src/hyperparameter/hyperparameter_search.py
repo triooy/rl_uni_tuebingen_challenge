@@ -34,10 +34,12 @@ def get_objective_fn(config):
         reward = params.pop("reward")
         how_many_to_add = params.pop("how_many_to_add")
         discrete_action_space = params.pop("discrete_action_space")
+        policy = params.pop("policy")
         config["agent"]["normalize"] = normalize
         config["agent"]["reward"] = reward
         config["agent"]["discrete_action_space"] = discrete_action_space
         config["agent"]["how_many_to_add"] = how_many_to_add
+        config["agent"]["policy"] = policy
         config["agent_parameter"] = params
         config["logs"]["run_name"] = run_name + f"_{trial.number}"
         trainer = train(config)

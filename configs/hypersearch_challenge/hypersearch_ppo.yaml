@@ -1,11 +1,11 @@
 logs:
   csv_filename: "final_hypersearch_ppo.csv"
-  tensorboard_log_dir: "../final_hypersearch"
+  tensorboard_log_dir: "../final_hypersearch2"
   run_name: "final_hypersearch_ppo"
 
 hyperparameter:
   do_hyperparameter_search: true
-  study_name: "final_hypersearch_ppo"
+  study_name: "final_hypersearch_ppo3"
   storage: "sqlite:////home/dh/logdir/ppo.db"
   n_trials: 200
   n_jobs: 1
@@ -18,7 +18,7 @@ training:
   n_evaluations: 30
   n_timesteps: 30000000
   normalize: true
-  max_no_improvement_evals: 5
+  max_no_improvement_evals: 15
   steps_for_threshold: 5000100
   reward_threshold: 1
   steps_for_threshold_2: 3000100
@@ -27,10 +27,6 @@ training:
 
 agent:
   agent: "PPO"
-  policy: "PPO_MlpPolicy"
-  normalize: true
-  reward: 0
-  discrete_action_space: false
 
 agent_parameter: # ignored if hyperparameter search is enabled
   n_steps: 512
@@ -52,7 +48,6 @@ selfplay:
   add_opponent_every_n_steps: 1000000
   change_opponent_every_n_steps: 128000
   first_opponent_after_n_steps: 1000000
-  how_many_to_add: 1
   best_agents_path: ../best_agents
-  add_to_best_agents_when_mean_reward_is_above: 9.95
+  add_to_best_agents_when_mean_reward_is_above: 9.5
   add_to_best_agents_when_best_agents_mean_reward_is_above: 1

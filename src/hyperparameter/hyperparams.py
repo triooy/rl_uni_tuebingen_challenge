@@ -226,6 +226,7 @@ def sample_td3_params(trial: optuna.Trial) -> Dict[str, Any]:
         "policy_delay": policy_delay,
         "target_noise_clip": target_noise_clip,
         "how_many_to_add": how_many_to_add,
+        "policy": "TD3_MlpPolicy",
     }
 
     if noise_type == "normal":
