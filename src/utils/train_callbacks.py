@@ -83,14 +83,27 @@ class SelfplayCallback(BaseCallback):
                 and self.n_calls % self.change_every_n_steps == 0
             ):
                 if self.how_many_to_add:  # how many copies to add
-                    new_opponents = []
+                    new_opponents = [
+                        "lh.BasicOpponent(weak=False)",
+                        "lh.BasicOpponent(weak=True)",
+                    ]
                     for opponent in self.opponents:
                         new_opponents += [opponent for i in range(self.how_many_to_add)]
                     random.shuffle(new_opponents)
-                    new_opponents = new_opponents[: self.n_envs - 1]
                     new_opponents = sorted(new_opponents, reverse=False)
                     for i in range(self.n_envs - len(new_opponents)):
                         new_opponents.append(lh.BasicOpponent(weak=False))
+                    # replace 'lh.BasicOpponent(weak=False)' with lh.BasicOpponent(weak=False)
+                    # and lh.BasicOpponent(weak=True) with lh.BasicOpponent(weak=True)
+                    tmp = []
+                    for opponent in new_opponents:
+                        if opponent == "lh.BasicOpponent(weak=False)":
+                            tmp.append(lh.BasicOpponent(weak=False))
+                        elif opponent == "lh.BasicOpponent(weak=True)":
+                            tmp.append(lh.BasicOpponent(weak=True))
+                        else:
+                            tmp.append(opponent)
+                    new_opponents = tmp
                 else:  # otherwise choose random
                     new_opponents = random.choices(
                         self.opponents,
