@@ -201,7 +201,9 @@ class Trainer:
             self.agents_kwargs["env"] = self.train_env
             self.agents_kwargs["verbose"] = self.verbose
             self.agents_kwargs["tensorboard_log"] = self.tensorboard_log_dir
-
+            self.agents_kwargs["action_noise"] = OrnsteinUhlenbeckActionNoise(
+                mean=np.zeros(4), sigma=0.38512363 * np.ones(4)
+            )
             if self.hindsight_replay_buffer:
                 self.agents_kwargs[
                     "replay_buffer_class"
