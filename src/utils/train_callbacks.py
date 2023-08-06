@@ -83,11 +83,11 @@ class SelfplayCallback(BaseCallback):
                 and self.n_calls % self.change_every_n_steps == 0
             ):
                 if self.how_many_to_add:  # how many copies to add
-                    new_opponents = [
+                    new_opponents = []
+                    for opponent in self.opponents + [
                         "lh.BasicOpponent(weak=False)",
                         "lh.BasicOpponent(weak=True)",
-                    ]
-                    for opponent in self.opponents:
+                    ]:
                         new_opponents += [opponent for i in range(self.how_many_to_add)]
                     random.shuffle(new_opponents)
                     new_opponents = sorted(new_opponents, reverse=False)
