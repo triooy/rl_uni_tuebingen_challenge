@@ -78,6 +78,7 @@ class Trainer:
         her_reward_function: str = "distance",
         her_weights=np.zeros(18),
         her_prob_stop_using_weights=0.05,
+        change_sides=False,
         **kwargs,
     ) -> None:
         self.reward = reward
@@ -100,6 +101,7 @@ class Trainer:
         self.her_weights = her_weights
         self.agents_kwargs = agents_kwargs
         self.env_mode = env_mode
+        self.change_sides = change_sides
 
         if "dict_observation_space" in agents_kwargs:
             self.dict_observation_space = self.agents_kwargs["dict_observation_space"]
@@ -385,6 +387,7 @@ class Trainer:
                 her_reward_function=self.her_reward_function,
                 her_weights=self.her_weights,
                 her_prob_stop_using_weights=self.her_prob_stop_using_weights,
+                change_sides=self.change_sides,
             )
             # load best agents
             for i, agent in enumerate(self.best_agents):
@@ -404,6 +407,7 @@ class Trainer:
             her_reward_function=self.her_reward_function,
             her_weights=self.her_weights,
             her_prob_stop_using_weights=self.her_prob_stop_using_weights,
+            change_sides=self.change_sides,
         )
         self.eval_env = get_env(
             self.n_eval_envs,
@@ -416,6 +420,7 @@ class Trainer:
             her_reward_function=self.her_reward_function,
             her_prob_stop_using_weights=self.her_prob_stop_using_weights,
             her_weights=self.her_weights,
+            change_sides=self.change_sides,
         )
 
     def write_csv(self, path):

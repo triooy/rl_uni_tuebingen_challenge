@@ -54,6 +54,7 @@ class CustomWrapper(gym.Wrapper):
         her_reward_function="classic",
         her_weights=np.zeros(18),
         her_prob_stop_using_weights=0.05,
+        change_sides=False,
     ):
         # Call the parent constructor, so we can access self.env later
         super().__init__(env)
@@ -72,6 +73,10 @@ class CustomWrapper(gym.Wrapper):
         self.her_prob_stop_using_weights = her_prob_stop_using_weights
         self.her_weights = her_weights
         self.info = {}
+        self.change_sides = change_sides
+        self.side = 0
+        self.obs = None
+        self.obs2 = None
         if discrete_action_space:
             env.action_space = spaces.Discrete(7)  # Check if this is still right
         else:
@@ -105,7 +110,12 @@ class CustomWrapper(gym.Wrapper):
         Reset the environment
         """
         one_starts = random.choice([True, False])
+        if self.change_sides:
+            self.side = random.choice([0, 1])
         obs, info = self.env.reset(one_starting=one_starts)
+        self.obs = obs
+        self.obs2 = self.env.obs_agent_two()
+
         if self.dict_observation_space:
             # transform obs to dict for her
             obs = self.convert_obs_to_dict(obs)
@@ -120,7 +130,7 @@ class CustomWrapper(gym.Wrapper):
         """
 
         if self.mode == self.NORMAL or self.mode == self.RANDOM:
-            obs_agent2 = self.env.obs_agent_two()
+            obs_agent2 = self.obs2
             if isinstance(self.opponent, lh.BasicOpponent):
                 a2 = self.opponent.act(obs_agent2)
             elif self.opponent is None:
@@ -134,6 +144,13 @@ class CustomWrapper(gym.Wrapper):
             action = self.env.discrete_to_continous_action(action)
 
         obs, r, d, t, info = self.env.step(np.hstack([action, a2]))
+        obs2 = self.env.obs_agent_two()
+
+        if self.change_sides and self.side == 1:
+            # swap obs
+            obs_tmp = obs
+            obs = obs2
+            obs2 = obs_tmp
 
         if self.dict_observation_space:
             obs = self.convert_obs_to_dict(obs)
@@ -145,6 +162,8 @@ class CustomWrapper(gym.Wrapper):
             info["episode"] = {"r": r, "l": self.env.time, "t": d}
 
         self.info = info
+        self.obs = obs
+        self.obs2 = obs2
         return obs, r, d, t, info
 
     def _compute_reward(self, reward, info, done):
@@ -263,6 +282,7 @@ def make_env(
     her_reward_function="classic",
     her_weights=np.zeros(18),
     her_prob_stop_using_weights=0.05,
+    change_sides=False,
 ):
     """
     Utility function for multiprocessed env.
@@ -306,6 +326,7 @@ def make_env(
             her_reward_function=her_reward_function,
             her_weights=her_weights,
             her_prob_stop_using_weights=her_prob_stop_using_weights,
+            change_sides=change_sides,
         )
         filename = "monitor.csv"
         cenv = Monitor(cenv, filename=filename)
@@ -328,6 +349,7 @@ def get_env(
     her_reward_function="classic",
     her_weights=np.zeros(18),
     her_prob_stop_using_weights=0.05,
+    change_sides=False,
 ):
     logger.info(
         f"Creating {n_envs} environments, with mode {mode}, \
@@ -348,6 +370,7 @@ def get_env(
                 her_reward_function=her_reward_function,
                 her_weights=her_weights,
                 her_prob_stop_using_weights=her_prob_stop_using_weights,
+                change_sides=change_sides,
             )
             for i in range(n_envs)
         ],
