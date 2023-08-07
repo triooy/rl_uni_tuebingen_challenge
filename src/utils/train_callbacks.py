@@ -93,7 +93,7 @@ class SelfplayCallback(BaseCallback):
                     random.shuffle(new_opponents)
 
                     for i in range(self.n_envs - len(new_opponents)):
-                        new_opponents.append(lh.BasicOpponent(weak=False))
+                        new_opponents.append("lh.BasicOpponent(weak=False)")
                     # replace 'lh.BasicOpponent(weak=False)' with lh.BasicOpponent(weak=False)
                     # and lh.BasicOpponent(weak=True) with lh.BasicOpponent(weak=True)
                     new_opponents = new_opponents[: self.n_envs]
