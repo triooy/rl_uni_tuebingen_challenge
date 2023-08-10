@@ -4,6 +4,8 @@ import torch as tf
 from gymnasium import spaces
 import math
 
+""" By Cornelius Wiehl, 10.8.2023 """
+
 # we need this to not break stable baseline implementation of off policy algorithms with replay buffers
 from stable_baselines3.common.type_aliases import DictReplayBufferSamples
 
@@ -20,7 +22,6 @@ class CustomHindisghtExperienceReplay:
     :param device: Devcie for Pytorch
     :param n_envs: Number of parallel environments
     :param her_ratio: Ratio between HER replays and regular replays (between 0 and 1)
-    :param optimize_memory_usage: this param is only needed to not break stable baseline implementation of off policy algorithms
     """
 
     def __init__(
@@ -34,7 +35,7 @@ class CustomHindisghtExperienceReplay:
         her_ratio=0.75,
         action_space_dimension=4,
         observation_length=18,
-        optimize_memory_usage=False,
+        **kwargs,
     ):
         self.buffer_size = buffer_size
         self.observation_space = observation_space
@@ -58,7 +59,7 @@ class CustomHindisghtExperienceReplay:
         self.observation_length = observation_length
         self.buffer_size = buffer_size // n_envs
 
-        """ Initialization of observations, future"""
+        """ Initialization of observations, and future observations"""
 
         self.observations = {
             key: np.zeros(
@@ -216,6 +217,7 @@ class CustomHindisghtExperienceReplay:
             for tmp_key, tmp_obs in next_observations.items()
         }
 
+        # we need a DictReplayBufferSamples object as return
         return DictReplayBufferSamples(
             observations=observations,
             actions=self.to_torch(self.actions[batch_indices, env_indices]),
