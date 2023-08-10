@@ -1,5 +1,5 @@
 test:
-  model_1_dir: "../final_exp_2/td3_2_with_self"
+  model_1_dir: "../best_agents/trial_9"
   model_2_dir: "../best_agents/trial_8"
   n_eval_episodes: 100
   n_eval_envs: 1

@@ -12,6 +12,8 @@ from torch.distributions import Normal
 from torch import nn
 from typing import Optional, Tuple
 
+""" By David Hustadt, 10.8.2023 """
+
 
 class PPO_gSDE_MlpPolicy(BaseModel):
     def __init__(

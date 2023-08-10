@@ -1,6 +1,8 @@
 import torch as t
 from typing import Optional
 
+""" By David Hustadt, 10.8.2023 """
+
 
 def sum_independent_dims(tensor: t.Tensor) -> t.Tensor:
     """

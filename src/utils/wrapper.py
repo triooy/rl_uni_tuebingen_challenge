@@ -182,12 +182,16 @@ class CustomWrapper(gym.Wrapper):
             else:
                 return 0
 
+    """ Reward function used in the HER setting. Overwrites the compute_reward function of the env in a vectorized fashion
+        in order to be compatible to use the observation vector for reward computation."""
+
     def compute_reward(
         self,
         achieved_goal,
         desired_goal,
         info,
     ):
+        # choose the correct reward function for HER implemented in src.HER.utils
         if self.her_reward_function == "classic":
             return compute_reward_classic(achieved_goal, desired_goal, info)
         elif self.her_reward_function == "distance":
@@ -377,6 +381,9 @@ def get_env(
         start_method=start_method,
     )
     return env
+
+
+""" We need to different wrappers for the algorithms to be able to use them within the same framework. """
 
 
 class ModelWrapperTD3(TD3):

@@ -7,6 +7,7 @@ from gymnasium import spaces
 from torch import nn
 from abc import ABC
 
+""" By David Hustadt, 10.8.2023 """
 from stable_baselines3.common.preprocessing import (
     is_image_space,
     maybe_transpose,

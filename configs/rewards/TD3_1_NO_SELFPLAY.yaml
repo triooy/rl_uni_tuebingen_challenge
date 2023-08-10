@@ -1,7 +1,7 @@
 logs:
-  csv_filename: "td3_her_2_no_self_weighted_to_classic_1.csv"
-  tensorboard_log_dir: "../debug"
-  run_name: "td3_her_2_no_self_weighted_to_classic_1"
+  csv_filename: "td3_positive_reward.csv"
+  tensorboard_log_dir: "../rewards"
+  run_name: "td3_positive_reward"
 
 hyperparameter:
   do_hyperparameter_search: false
@@ -27,12 +27,12 @@ training:
 
 agent:
   agent: "TD3"
-  policy: "TD3_MultiInputPolicy" # different policy than without HER
+  policy: "TD3_MlpPolicy"
   normalize: true
-  reward: 2
+  reward: 1
   discrete_action_space: false
-  dict_observation_space: true
-  hindsight_replay_buffer: true
+  dict_observation_space: false
+  hindsight_replay_buffer: false
 
 agent_parameter: # ignored if hyperparameter search is enabled
   buffer_size: 1000000
@@ -56,10 +56,3 @@ selfplay:
   best_agents_path: null # folder to other agents that the agent plays against during training
   add_to_best_agents_when_mean_reward_is_above: 9.0
   add_to_best_agents_when_best_agents_mean_reward_is_above: 1
-
-hindsight_replay:
-  her_ratio: 0.5
-  her_reward_function: "weighted_to_classic"
-  her_weights:
-    [0.1, 0.1, 0.1, 0.1, 0.1, 0, 0, 0, 0, 0, 0, 0, 0.1, 0.1, 0.1, 0.1, 0, 0]
-  her_prob_stop_using_weights: 0.01
