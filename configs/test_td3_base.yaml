@@ -1,0 +1,12 @@
+test:
+  model_1_dir: "example_models/TD3_0_SELFPLAY"
+  model_2_dir: null
+  n_eval_episodes: 100
+  n_eval_envs: 1
+  model_vs_model: false
+  render_mode: human
+  device: cpu
+  discrete_action_space: false
+  dict_observation_space: false
+  weak_opponent: false
+  start_method: "spawn"
